@@ -3,6 +3,7 @@ from typing import List, Tuple
 from time import sleep
 from os import system
 from copy import deepcopy
+from sys import argv
 
 
 class Playground:
@@ -67,7 +68,7 @@ def update(arr: Playground):
 
 def draw(arr: Playground):
     system("cls")
-    chars = {True: "0", False: " "}
+    chars = {True: "+", False: "-"}
     for row in arr.field:
         for cell in row:
             print(chars[cell.alive], end='')
@@ -75,16 +76,23 @@ def draw(arr: Playground):
 
 
 def main():
-    columns = 100
-    rows = 10
+    if len(argv) != 4:
+        print("Usage main.py <rows> <columns> <iterations>")
+        return
+
+    try:
+        columns, rows, i = [int(x) for x in argv[1:]]
+    except ValueError:
+        print("Usage main.py <rows> <columns> <iterations>")
+        return
+
     arr = Playground((columns, rows))
     arr.randomize()
-    i = 0
-    while i < 100:
+    while i > 0:
         sleep(0.25)
         arr = update(arr)
         draw(arr)
-        i += 1
+        i -= 1
 
 
 if __name__ == "__main__":

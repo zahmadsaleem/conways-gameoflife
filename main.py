@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 from random import randint
 from typing import List, Tuple
 from time import sleep
@@ -17,6 +18,37 @@ class Playground:
         for column in self.field:
             for cell in column:
                 cell.alive = [True, False][randint(0, 1)]
+
+    def update(self):
+        new_filed = deepcopy(self.field)
+        for r, row in enumerate(self.field):
+            for i, oldcell in enumerate(row):
+                neighbours = oldcell.neighbours(self)
+                neighbours_len = len(neighbours)
+                cell = new_filed[r][i]
+                if cell.alive:
+                    if neighbours_len < 2:
+                        cell.die()
+                    elif neighbours_len in range(2, 4):
+                        pass
+                    elif neighbours_len > 3:
+                        cell.die()
+                elif neighbours_len == 3:
+                    # cell is dead
+                    cell.live()
+
+        self.field = new_filed
+
+    # TODO: Load state
+    # TODO: Save state
+
+    def draw(self):
+        system("cls")
+        chars = {True: "+", False: "-"}
+        for row in self.field:
+            for cell in row:
+                print(chars[cell.alive], end='')
+            print("\n", end='')
 
 
 class Cell:
@@ -45,36 +77,6 @@ class Cell:
         return neighbour_list
 
 
-def update(arr: Playground):
-    newarr = deepcopy(arr)
-    for r, row in enumerate(arr.field):
-        for i, oldcell in enumerate(row):
-            neighbours = oldcell.neighbours(arr)
-            neighbours_len = len(neighbours)
-            cell = newarr.field[r][i]
-            if cell.alive:
-                if neighbours_len < 2:
-                    cell.die()
-                elif neighbours_len in range(2, 4):
-                    pass
-                elif neighbours_len > 3:
-                    cell.die()
-            elif neighbours_len == 3:
-                # cell is dead
-                cell.live()
-
-    return newarr
-
-
-def draw(arr: Playground):
-    system("cls")
-    chars = {True: "+", False: "-"}
-    for row in arr.field:
-        for cell in row:
-            print(chars[cell.alive], end='')
-        print("\n", end='')
-
-
 def main():
     if len(argv) != 4:
         print("Usage main.py <rows> <columns> <iterations>")
@@ -86,12 +88,12 @@ def main():
         print("Usage main.py <rows> <columns> <iterations>")
         return
 
-    arr = Playground((columns, rows))
-    arr.randomize()
+    playground = Playground((columns, rows))
+    playground.randomize()
     while i > 0:
         sleep(0.25)
-        arr = update(arr)
-        draw(arr)
+        playground.update()
+        playground.draw()
         i -= 1
 
 

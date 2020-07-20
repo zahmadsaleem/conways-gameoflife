@@ -15,27 +15,41 @@ class Playground:
         self.field: List[List[Cell]] = [[Cell(False, (row, col)) for col in range(columns)] for row in range(rows)]
 
     def randomize(self):
-        for column in self.field:
-            for cell in column:
-                cell.alive = [True, False][randint(0, 1)]
+        def process_cell(cell):
+            cell.alive = [True, False][randint(0, 1)]
+
+        self.map_to_field(process_cell)
+
+    def map_to_field(self, process_cell, do_before_row=None, do_after_row=None):
+        for r, row in enumerate(self.field):
+            results = None
+            if do_before_row is not None:
+                results = do_before_row(row_index=r, row=row)
+            for cell in row:
+                process_cell(cell)
+            if do_after_row is not None:
+                do_after_row(row_index=r, row=row, results=results)
 
     def update(self):
         new_filed = deepcopy(self.field)
-        for r, row in enumerate(self.field):
-            for i, oldcell in enumerate(row):
-                neighbours = oldcell.neighbours(self)
-                neighbours_len = len(neighbours)
-                cell = new_filed[r][i]
-                if cell.alive:
-                    if neighbours_len < 2:
-                        cell.die()
-                    elif neighbours_len in range(2, 4):
-                        pass
-                    elif neighbours_len > 3:
-                        cell.die()
-                elif neighbours_len == 3:
-                    # cell is dead
-                    cell.live()
+
+        def process_cell(cell):
+            neighbours = cell.neighbours(self)
+            neighbours_len = len(neighbours)
+            cell = new_filed[cell.index[0]][cell.index[1]]
+            if cell.alive:
+                if neighbours_len < 2:
+                    cell.die()
+                elif neighbours_len in range(2, 4):
+                    # keep alive
+                    pass
+                elif neighbours_len > 3:
+                    cell.die()
+            elif neighbours_len == 3:
+                # cell is dead
+                cell.live()
+
+        self.map_to_field(process_cell)
 
         self.field = new_filed
 
@@ -45,10 +59,14 @@ class Playground:
     def draw(self):
         system("cls")
         chars = {True: "+", False: "-"}
-        for row in self.field:
-            for cell in row:
-                print(chars[cell.alive], end='')
+
+        def process_cell(cell):
+            print(chars[cell.alive], end='')
+
+        def do_after_row(**kwargs):
             print("\n", end='')
+
+        self.map_to_field(process_cell, do_after_row=do_after_row)
 
 
 class Cell:
@@ -68,11 +86,11 @@ class Cell:
         for row, column in indices:
             if column in range(arr.columns) and row in range(arr.rows):
                 #  get cell
+                neighbour = arr.field[row][column]
                 #  check if alive
-                #  add to neighbour_list
-                neigh = arr.field[row][column]
-                if neigh.alive and (row, column) != self.index:
-                    neighbour_list.append(neigh)
+                if neighbour.alive and (row, column) != self.index:
+                    #  add to neighbour_list
+                    neighbour_list.append(neighbour)
 
         return neighbour_list
 

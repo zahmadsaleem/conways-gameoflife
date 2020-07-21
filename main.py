@@ -66,6 +66,9 @@ class Playground:
             drawchar = {"0": True, "-": False}
 
         with open(path, "r") as f:
+            # TODO: Remove row, col number from file
+            # TODO: check all lines are of equal length
+            # TODO: check if chars are valid
             rows, columns = f.readline().split(" ")
             rows = int(rows)
             columns = int(columns)

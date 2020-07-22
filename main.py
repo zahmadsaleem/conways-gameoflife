@@ -2,7 +2,7 @@
 import argparse
 from random import randint
 from typing import List, Tuple
-from time import sleep
+from time import sleep, process_time
 from os import system, name
 from copy import deepcopy
 from sys import argv
@@ -65,14 +65,19 @@ class Playground:
         if drawchar is None:
             drawchar = {"0": True, "-": False}
 
+        field = []
         with open(path, "r") as f:
-            # TODO: Remove row, col number from file
-            # TODO: check all lines are of equal length
-            # TODO: check if chars are valid
-            rows, columns = f.readline().split(" ")
-            rows = int(rows)
-            columns = int(columns)
-            field = [[drawchar[c] for c in row.strip()] for row in f.readlines()]
+            lines = [line.strip() for line in f.readlines() if line.strip()]
+            rows = len(lines)
+            columns = len(lines[0])
+            for line in lines:
+                if line:
+                    # throws a key error if character not in drawchars
+                    row = [drawchar[c] for c in line.strip()]
+                    # check all lines are of equal length
+                    if len(row) != columns:
+                        raise ValueError("no. of columns does not match")
+                    field.append(row)
 
         playground = cls((rows, columns))
         playground.load(field)
@@ -87,7 +92,6 @@ class Playground:
     def save(self, fpath):
         writable = [[self.drawchars[cell.alive] for cell in row] for row in self.field]
         with open(fpath, "w+") as f:
-            f.write(f"{self.rows} {self.columns}\n")
             for row in writable:
                 f.write("".join(row) + "\n")
 
@@ -99,6 +103,20 @@ class Playground:
             print("\n", end="")
 
         self.map_to_field(process_cell, do_after_row=do_after_row)
+
+    def play(self, i, result=True):
+        _i = i
+        self.draw()
+        while i > 0:
+            sleep(0.1)
+            clear_shell()
+            start = process_time()
+            self.update()
+            end = process_time()
+            self.draw()
+            i -= 1
+            if result:
+                print(f"iteration : {_i - i + 1}, duration : {'%.4gs' % (end - start)}")
 
     def extend(self, row, col):
         # extend each row by col
@@ -162,18 +180,6 @@ def clear_shell():
         system("cls")
     else:
         system("printf '\033c'")
-
-
-def play(playground, i):
-    _i = i
-    playground.draw()
-    while i > 0:
-        sleep(0.1)
-        clear_shell()
-        playground.update()
-        playground.draw()
-        print(f"iteration : {_i - i + 1}")
-        i -= 1
 
 
 def parse_args(parser, args):
@@ -241,7 +247,7 @@ def main():
     except:
         playground, iterations, fpath = parse_args(file_parser, argv[1:])
 
-    play(playground, iterations)
+    playground.play(iterations)
     if fpath:
         playground.save(fpath)
 

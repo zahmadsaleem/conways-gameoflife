@@ -10,9 +10,11 @@ from os.path import abspath
 
 
 class Playground:
+    DEFAULT_DRAW_CHARS = {False: "-", True: "0"}
+
     def __init__(self, bounds: Tuple[int, int], drawchars=None):
         if drawchars is None:
-            drawchars = {False: "-", True: "0"}
+            drawchars = self.DEFAULT_DRAW_CHARS
         rows, columns = bounds
         self.rows = rows
         self.columns = columns
@@ -108,15 +110,15 @@ class Playground:
         _i = i
         self.draw()
         while i > 0:
-            sleep(0.1)
-            clear_shell()
             start = process_time()
             self.update()
             end = process_time()
+            sleep(0.1)
+            clear_shell()
             self.draw()
             i -= 1
             if result:
-                print(f"iteration : {_i - i + 1}, duration : {'%.4gs' % (end - start)}")
+                print(f"iteration : {_i - i}, duration : {'%.4gs' % (end - start)}")
 
     def extend(self, row, col):
         # extend each row by col
@@ -213,7 +215,7 @@ def parse_args(parser, args):
 class ErrorCatchingArgumentParser(argparse.ArgumentParser):
     def exit(self, status=0, message=None):
         if status:
-            raise Exception(f"Exiting because of an error: {message}")
+            raise ValueError(f"Exiting because of an error: {message}")
 
     def error(self, message):
         self.exit(2, message=message)
@@ -244,7 +246,7 @@ def main():
     grid_parser, file_parser = setup_parser()
     try:
         playground, iterations, fpath = parse_args(grid_parser, argv[1:])
-    except:
+    except ValueError:
         playground, iterations, fpath = parse_args(file_parser, argv[1:])
 
     playground.play(iterations)

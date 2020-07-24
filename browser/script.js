@@ -7,11 +7,11 @@ canvas.height = CANVAS_HEIGHT;
 const ctx = canvas.getContext("2d");
 
 const PLAYGROUND_CONFIG_DEFAULTS = {
-  wait: 110,
+  wait: 301,
   // infinite
   iterations: -1,
   wait_increment: 50,
-  fill_ratio: 0.65,
+  fill_ratio: 0.35,
   generation_color(x) {
     let color;
     switch (true) {
@@ -31,19 +31,112 @@ const PLAYGROUND_CONFIG_DEFAULTS = {
   },
 };
 
-class Playground {
+class PlaygroundController {
   STATUS = {
     running: 1,
     paused: 2,
     init: 0,
   };
-  player = null;
+  player;
   wait = PLAYGROUND_CONFIG_DEFAULTS.wait;
+
+  constructor(playground) {
+    this.playground = playground;
+  }
+
+  init(iteration = PLAYGROUND_CONFIG_DEFAULTS.iterations) {
+    clearCanvas();
+    this.playground.draw();
+    this.player = setInterval(() => {
+      if (this.state === this.STATUS.running) {
+        clearCanvas();
+        this.playground.draw();
+        this.playground.update();
+        iteration--;
+      }
+      // status turns to init on reset
+      if (iteration === 0) clearInterval(this.player);
+    }, this.wait);
+  }
+
+  pause() {
+    this.state = this.STATUS.paused;
+  }
+
+  play() {
+    this.state = this.STATUS.running;
+  }
+
+  stop() {
+    clearInterval(this.player);
+    this.player = null;
+    this.state = this.STATUS.init;
+  }
+
+  reset() {
+    if (this.state !== this.STATUS.init) {
+      this.stop();
+      this.playground.resetField();
+      this.init();
+    }
+  }
+
+  changeWait(x) {
+    let current = this.state;
+    this.stop();
+    if (
+      x > 0 ||
+      !(x < 0 && this.wait <= PLAYGROUND_CONFIG_DEFAULTS.wait_increment)
+    ) {
+      this.wait += x * PLAYGROUND_CONFIG_DEFAULTS.wait_increment;
+    }
+    this.init();
+    if (current === this.STATUS.running) this.play();
+  }
+
+  slower() {
+    this.changeWait(1);
+  }
+
+  faster() {
+    this.changeWait(-1);
+  }
+
+  initializeControls() {
+    let play = document.querySelector("#play");
+    play.addEventListener("click", () => {
+      this.play();
+      // console.log("play");
+    });
+    let pause = document.querySelector("#pause");
+    pause.addEventListener("click", () => {
+      if (this.state === this.STATUS.running) this.pause();
+      // console.log("pause");
+    });
+    let reset = document.querySelector("#reset");
+    reset.addEventListener("click", () => {
+      this.reset();
+      // console.log("reset");
+    });
+    let faster = document.querySelector("#faster");
+    faster.addEventListener("click", () => {
+      this.faster();
+      // console.log("faster", this.wait);
+    });
+    let slower = document.querySelector("#slower");
+    slower.addEventListener("click", () => {
+      this.slower();
+      // console.log("slower", this.wait);
+    });
+  }
+}
+
+class Playground {
+  state;
   constructor(rows, columns) {
     this.rows = rows;
     this.columns = columns;
     this.field = this.generate();
-    this.state = this.STATUS.init;
     this.initial_state = this.field;
   }
 
@@ -130,64 +223,6 @@ class Playground {
   isValidCell(row, col) {
     return col >= 0 && col < this.columns && row > 0 && row < this.rows;
   }
-
-  init(iteration = PLAYGROUND_CONFIG_DEFAULTS.iterations) {
-    clearCanvas();
-    this.draw();
-    this.player = setInterval(() => {
-      if (this.state === this.STATUS.running) {
-        clearCanvas();
-        this.draw();
-        this.update();
-        iteration--;
-      }
-      // status turns to init on reset
-      if (iteration === 0) clearInterval(this.player);
-    }, this.wait);
-  }
-
-  pause() {
-    this.state = this.STATUS.paused;
-  }
-
-  play() {
-    this.state = this.STATUS.running;
-  }
-
-  reset() {
-    if (this.state !== this.STATUS.init) {
-      this.stop();
-      this.resetField();
-      this.init();
-    }
-  }
-
-  changeWait(x) {
-    let current = this.state;
-    this.stop();
-    if (
-      x > 0 ||
-      !(x < 0 && this.wait <= PLAYGROUND_CONFIG_DEFAULTS.wait_increment)
-    ) {
-      this.wait += x * PLAYGROUND_CONFIG_DEFAULTS.wait_increment;
-    }
-    this.init();
-    if (current === this.STATUS.running) this.play();
-  }
-
-  slower() {
-    this.changeWait(1);
-  }
-
-  faster() {
-    this.changeWait(-1);
-  }
-
-  stop() {
-    clearInterval(this.player);
-    this.player = null;
-    this.state = this.STATUS.init;
-  }
 }
 
 class Cell {
@@ -229,41 +264,14 @@ function clearCanvas() {
   ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 }
 
-function initializeControls(playground) {
-  let play = document.querySelector("#play");
-  play.addEventListener("click", () => {
-    console.log("play");
-    playground.play();
-  });
-  let pause = document.querySelector("#pause");
-  pause.addEventListener("click", () => {
-    console.log("pause");
-    if (playground.state === playground.STATUS.running) playground.pause();
-  });
-  let reset = document.querySelector("#reset");
-  reset.addEventListener("click", () => {
-    console.log("reset");
-    playground.reset();
-  });
-  let faster = document.querySelector("#faster");
-  faster.addEventListener("click", () => {
-    playground.faster();
-    // console.log("faster", playground.wait);
-  });
-  let slower = document.querySelector("#slower");
-  slower.addEventListener("click", () => {
-    playground.slower();
-    // console.log("slower", playground.wait);
-  });
-}
-
 function run() {
   let plg = new Playground(
     CANVAS_HEIGHT / PIXEL_SIZE,
     CANVAS_WIDTH / PIXEL_SIZE
   );
-  initializeControls(plg);
-  plg.init();
+  let controller = new PlaygroundController(plg);
+  controller.initializeControls();
+  controller.init();
 }
 
 run();

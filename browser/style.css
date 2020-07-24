@@ -1,0 +1,15 @@
+#controls{
+    position: absolute;
+    right: 10px;
+    top: 10px;
+}
+
+.control-container{
+    padding: 10px 0 0 0;
+    display: flex;
+}
+
+#controls button{
+    float: right;
+    flex: auto;
+}

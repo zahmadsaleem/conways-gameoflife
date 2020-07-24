@@ -42,6 +42,7 @@ class PlaygroundController {
 
   constructor(playground) {
     this.playground = playground;
+    this.state = this.STATUS.init;
   }
 
   init(iteration = PLAYGROUND_CONFIG_DEFAULTS.iterations) {
@@ -132,7 +133,6 @@ class PlaygroundController {
 }
 
 class Playground {
-  state;
   constructor(rows, columns) {
     this.rows = rows;
     this.columns = columns;
@@ -156,73 +156,73 @@ class Playground {
   }
 
   draw() {
-    for (let row of this.field) {
-      for (let cell of row) {
-        if (cell.alive) {
-          ctx.fillStyle = PLAYGROUND_CONFIG_DEFAULTS.generation_color(
-            cell.generation
-          );
-          ctx.fillRect(
-            cell.col * PIXEL_SIZE,
-            cell.row * PIXEL_SIZE,
-            PIXEL_SIZE,
-            PIXEL_SIZE
-          );
-        }
+    const process_cell = (cell) => {
+      if (cell.alive) {
+        ctx.fillStyle = PLAYGROUND_CONFIG_DEFAULTS.generation_color(
+          cell.generation
+        );
+        ctx.fillRect(
+          cell.col * PIXEL_SIZE,
+          cell.row * PIXEL_SIZE,
+          PIXEL_SIZE,
+          PIXEL_SIZE
+        );
       }
-    }
+    };
+    this.apply(process_cell);
   }
 
   resetField() {
-    let grid = [];
-    for (let cell_row of this.initial_state) {
-      let _row = [];
-      for (let _cell of cell_row) {
-        let cell = new Cell(_cell.row, _cell.col, _cell.alive);
-        _row.push(cell);
-      }
-      grid.push(_row);
-    }
-    this.field = grid;
+    const process_cell = (cell) => {
+      cell.alive = this.initial_state[cell.row][cell.col].alive;
+      cell.generation = 0;
+    };
+    this.apply(process_cell);
   }
 
   update() {
-    let grid = [];
-    for (let cell_row of this.field) {
-      let _row = [];
-      for (let _cell of cell_row) {
-        let cell = new Cell(_cell.row, _cell.col, _cell.alive);
-        cell.generation = _cell.generation;
-        let length = _cell.neighbours(this).length;
-        if (cell.alive) {
-          if (length > 3 || length < 2) cell.die();
-          else cell.generation++;
-        } else {
-          if (length === 3) cell.live();
-        }
-        _row.push(cell);
+    let grid = this.generate(false);
+    const process_cell = (cell) => {
+      // new generated cell from grid
+      let new_cell = grid[cell.row][cell.col];
+      // copy state and generation
+      new_cell.alive = cell.alive;
+      new_cell.generation = cell.generation;
+      // check neighbors of old cell
+      let length = cell.neighbours(this).length;
+      if (cell.alive) {
+        if (length > 3 || length < 2) new_cell.die();
+        else new_cell.generation++;
+      } else {
+        if (length === 3) new_cell.live();
       }
-      grid.push(_row);
-    }
+    };
+    this.apply(process_cell);
     this.field = grid;
   }
 
-  apply(processCell = null, processBeforeRow = null, processAfterRow = null) {
+  apply(processCell) {
+    // DRY code for looping through field
     for (let cell_row of this.field) {
-      let results;
-      if (processBeforeRow) results = processBeforeRow(cell_row);
       for (let cell of cell_row) {
-        if (processCell) {
-          processCell(cell);
-        }
+        processCell(cell);
       }
-      if (processAfterRow) processAfterRow(cell_row, results);
     }
   }
 
   isValidCell(row, col) {
     return col >= 0 && col < this.columns && row > 0 && row < this.rows;
   }
+}
+
+class PlaygroundTranslator {
+  constructor(playground) {
+    this.playground = playground;
+  }
+  translate() {}
+  save() {}
+  load() {}
+  debug() {}
 }
 
 class Cell {

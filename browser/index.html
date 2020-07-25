@@ -6,21 +6,63 @@
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
-    <div id="controls">
-      <div class="control-container">
-        <button id="play">Play</button>
-        <button id="pause">Pause</button>
-        <button id="reset">Reset</button>
+    <div id="controls-area">
+      <div>
+        <p id="toggle-controls">toggle controls</p>
       </div>
-      <div class="control-container">
-        <button id="faster">Faster</button>
-        <button id="slower">Slower</button>
+      <div id="controls">
+        <!--        <div class="control-container">-->
+        <!--          <label>-->
+        <!--            <input type="checkbox" />-->
+        <!--            show neighbour count-->
+        <!--          </label>-->
+        <!--        </div>-->
+
+        <!--        <div class="control-container">-->
+        <!--          <label for="iterations">iterations</label-->
+        <!--          ><input id="iterations" type="number" />-->
+        <!--        </div>-->
+
+        <div class="control-container">
+          <button id="save">save</button>
+          <button id="load">load</button>
+          <button id="save-image">save image</button>
+          <input
+            type="file"
+            id="file-select"
+            style="display: none;"
+            accept="text/plain"
+          />
+        </div>
+
+        <div class="control-container">
+          <button id="randomize">randomize</button>
+          <button id="clear">clear</button>
+        </div>
+
+        <div class="control-container">
+          <label for="wait-slider">wait</label
+          ><input
+            type="range"
+            min="10"
+            max="1000"
+            value="300"
+            step="10"
+            id="wait-slider"
+          />
+          <span id="wait-duration">300 ms</span>
+        </div>
+
+        <div class="control-container">
+          <button id="pause-play">play</button>
+          <button id="next">next</button>
+          <button id="reset">reset</button>
+        </div>
       </div>
-      <div class="control-container">
-        <button id="save">Save</button>
-        <button id="load">Load</button>
-        <input type="file" id="file-select" style="display: none;" />
-      </div>
+    </div>
+    <div id="info-area">
+      <span>iteration #</span>
+      <span id="iteration-number">0</span>
     </div>
     <canvas id="canvas"></canvas>
     <script src="script.js"></script>

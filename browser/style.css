@@ -1,15 +1,63 @@
-#controls{
-    position: absolute;
-    right: 10px;
-    top: 10px;
+body {
+  font-family: monospace;
+  color: white;
 }
 
-.control-container{
-    padding: 10px 0 0 0;
-    display: flex;
+#controls-area {
+  position: fixed;
+  right: 20px;
+  bottom: calc(1vh + 10px);
 }
 
-#controls button{
-    float: right;
-    flex: auto;
+#controls {
+  background-color: rgba(0, 0, 0, 0.8);
+  border-radius: 5px;
+  border: white 1px solid;
+  padding: 15px 5px 5px 5px;
+}
+
+.control-container {
+  padding: 0 0 10px 0;
+  display: flex;
+}
+
+#controls button {
+  float: right;
+  flex: auto;
+  margin: 0 2px 0 2px;
+  font-family: monospace;
+}
+
+.control-container p {
+  color: white;
+  font-weight: bold;
+  flex: auto;
+  padding: 5px;
+}
+
+input {
+  max-width: 50px;
+  margin: 0 2px 0 2px;
+}
+
+#toggle-controls {
+  float: right;
+  margin-top: -30px;
+  background-color: blue;
+  cursor: pointer;
+  padding: 5px;
+}
+.collapse {
+  display: none;
+}
+
+#wait-slider {
+  max-width: none;
+}
+
+#info-area {
+  position: fixed;
+  bottom: 20px;
+  background-color: blue;
+  padding: 5px;
 }

@@ -1,14 +1,14 @@
 const PIXEL_SIZE = 15;
-const CANVAS_WIDTH = window.innerWidth;
-const CANVAS_HEIGHT = window.innerHeight;
-const canvas = document.querySelector("#canvas");
-canvas.width = CANVAS_WIDTH;
-canvas.height = CANVAS_HEIGHT;
-const ctx = canvas.getContext("2d");
+const CANVAS_WIDTH = window.innerWidth - 20;
+const CANVAS_HEIGHT = window.innerHeight - 20;
+const CANVAS = document.querySelector("#canvas");
+CANVAS.width = CANVAS_WIDTH;
+CANVAS.height = CANVAS_HEIGHT;
+const CTX = CANVAS.getContext("2d");
 
 const PLAYGROUND_CONFIG_DEFAULTS = {
   debug: false,
-  wait: 301,
+  wait: 300,
   // infinite
   iterations: -1,
   wait_increment: 25,
@@ -34,6 +34,8 @@ const PLAYGROUND_CONFIG_DEFAULTS = {
 
 class PlaygroundBase {}
 
+class PlaygroundCreator {}
+
 class PlaygroundController {
   STATUS = {
     running: 1,
@@ -41,96 +43,117 @@ class PlaygroundController {
     init: 0,
   };
   player;
-  wait = PLAYGROUND_CONFIG_DEFAULTS.wait;
-
+  #wait = PLAYGROUND_CONFIG_DEFAULTS.wait;
+  iter_count = 0;
   constructor(playground) {
     this.playground = playground;
     this.state = this.STATUS.init;
   }
 
-  init(iteration = PLAYGROUND_CONFIG_DEFAULTS.iterations) {
+  init(iterations = PLAYGROUND_CONFIG_DEFAULTS.iterations) {
     clearCanvas();
     this.playground.draw();
     this.player = setInterval(() => {
       if (this.state === this.STATUS.running) {
-        clearCanvas();
-        this.playground.draw();
-        this.playground.update();
-        iteration--;
+        this.next();
+        iterations--;
       }
       // status turns to init on reset
-      if (iteration === 0) clearInterval(this.player);
-    }, this.wait);
+      if (iterations === 0) clearInterval(this.player);
+    }, this.#wait);
+    document.getElementById("pause-play").innerHTML = "start";
   }
 
   pause() {
     this.state = this.STATUS.paused;
+    document.getElementById("pause-play").innerHTML = "play";
   }
 
   play() {
     this.state = this.STATUS.running;
+    document.getElementById("pause-play").innerHTML = "pause";
   }
 
   stop() {
+    this.iter_count = 0;
+    document.getElementById("iteration-number").innerText = "0";
     clearInterval(this.player);
     this.player = null;
     this.state = this.STATUS.init;
   }
 
-  reset() {
-    if (this.state !== this.STATUS.init) {
+  reset(is_preserve = true) {
+    if (this.state !== this.STATUS.init || !is_preserve) {
       this.stop();
-      this.playground.resetField();
+      is_preserve
+        ? this.playground.restoreInitialField()
+        : this.playground.killAllCells();
       this.init();
     }
   }
 
-  changeWait(x) {
+  randomize() {
+    this.stop();
+    this.playground.randomizeField();
+    this.init();
+  }
+
+  next() {
+    clearCanvas();
+    this.playground.update();
+    this.playground.draw();
+    this.iter_count++;
+    document.getElementById(
+      "iteration-number"
+    ).innerText = this.iter_count.toString();
+  }
+  set wait(x) {
     let current = this.state;
     this.stop();
-    if (
-      x > 0 ||
-      !(x < 0 && this.wait <= PLAYGROUND_CONFIG_DEFAULTS.wait_increment)
-    ) {
-      this.wait += x * PLAYGROUND_CONFIG_DEFAULTS.wait_increment;
-    }
+    this.#wait = x;
     this.init();
     if (current === this.STATUS.running) this.play();
   }
 
-  slower() {
-    this.changeWait(1);
-  }
-
-  faster() {
-    this.changeWait(-1);
-  }
-
   initializeControls() {
-    let play = document.querySelector("#play");
-    play.addEventListener("click", () => {
-      this.play();
+    let toggle_btn = document.getElementById("toggle-controls");
+    toggle_btn.addEventListener("click", () => {
+      document.getElementById("controls").classList.toggle("collapse");
+      console.log("collapse");
+    });
+    let pause_play_btn = document.querySelector("#pause-play");
+    pause_play_btn.addEventListener("click", () => {
+      if (this.state === this.STATUS.running) this.pause();
+      else this.play();
       // console.log("play");
     });
-    let pause = document.querySelector("#pause");
-    pause.addEventListener("click", () => {
-      if (this.state === this.STATUS.running) this.pause();
-      // console.log("pause");
+    let next_btn = document.querySelector("#next");
+    next_btn.addEventListener("click", () => {
+      if (this.state === this.STATUS.init || this.state === this.STATUS.paused)
+        this.next();
+      // console.log("next");
     });
-    let reset = document.querySelector("#reset");
-    reset.addEventListener("click", () => {
+    let reset_btn = document.querySelector("#reset");
+    reset_btn.addEventListener("click", () => {
       this.reset();
       // console.log("reset");
     });
-    let faster = document.querySelector("#faster");
-    faster.addEventListener("click", () => {
-      this.faster();
-      // console.log("faster", this.wait);
+    let clear_btn = document.querySelector("#clear");
+    clear_btn.addEventListener("click", () => {
+      this.reset(false);
+      // console.log("clear");
     });
-    let slower = document.querySelector("#slower");
-    slower.addEventListener("click", () => {
-      this.slower();
-      // console.log("slower", this.wait);
+    let randomize_btn = document.querySelector("#randomize");
+    randomize_btn.addEventListener("click", () => {
+      this.randomize();
+      console.log("randomize");
+    });
+    let wait_slider = document.querySelector("#wait-slider");
+    wait_slider.addEventListener("change", () => {
+      this.wait = wait_slider.value;
+      document.getElementById("wait-duration").innerText =
+        wait_slider.value + " ms";
+      // console.log("wait", wait_slider.value);
     });
   }
 }
@@ -139,16 +162,16 @@ class Playground {
   constructor(rows, columns) {
     this.rows = rows;
     this.columns = columns;
-    this.field = this.generate();
+    this.field = this.generate(true);
     this.initial_state = this.field;
   }
 
-  generate(randomize = true) {
+  generate(is_random) {
     let grid = [];
     for (let row = 0; row < this.rows; row++) {
       let _row = [];
       for (let col = 0; col < this.columns; col++) {
-        let alive = randomize
+        let alive = is_random
           ? Math.random() < PLAYGROUND_CONFIG_DEFAULTS.fill_ratio
           : false;
         _row.push(new Cell(row, col, alive));
@@ -161,10 +184,10 @@ class Playground {
   draw(debug = PLAYGROUND_CONFIG_DEFAULTS.debug) {
     const process_cell = (cell) => {
       if (cell.alive) {
-        ctx.fillStyle = PLAYGROUND_CONFIG_DEFAULTS.generation_color(
+        CTX.fillStyle = PLAYGROUND_CONFIG_DEFAULTS.generation_color(
           cell.generation
         );
-        ctx.fillRect(
+        CTX.fillRect(
           cell.col * PIXEL_SIZE,
           cell.row * PIXEL_SIZE,
           PIXEL_SIZE,
@@ -172,8 +195,8 @@ class Playground {
         );
       }
       if (debug) {
-        ctx.fillStyle = "white";
-        ctx.fillText(
+        CTX.fillStyle = "white";
+        CTX.fillText(
           cell.neighbours(this).length.toString(),
           cell.col * PIXEL_SIZE + PIXEL_SIZE / 2,
           cell.row * PIXEL_SIZE + PIXEL_SIZE / 2
@@ -183,20 +206,19 @@ class Playground {
     this.apply(process_cell);
   }
 
-  resetField(field = null, preserve_life = true) {
+  restoreInitialField(field = null) {
     const process_cell = (cell) => {
       let grid = field ? field : this.initial_state;
       let row = grid[cell.row] || this.initial_state[cell.row];
       if (grid[cell.row]) {
         cell.alive = row[cell.col]
           ? row[cell.col].alive
-          : preserve_life
+          : field != null
           ? this.initial_state[cell.row][cell.col].alive
           : false;
       } else {
-        cell.alive = preserve_life
-          ? this.initial_state[cell.row][cell.col].alive
-          : false;
+        cell.alive =
+          field != null ? this.initial_state[cell.row][cell.col].alive : false;
       }
 
       cell.generation = 0;
@@ -237,6 +259,14 @@ class Playground {
 
   isValidCell(row, col) {
     return col >= 0 && col < this.columns && row >= 0 && row < this.rows;
+  }
+
+  killAllCells() {
+    this.field = this.initial_state = this.generate(false);
+  }
+
+  randomizeField() {
+    this.field = this.initial_state = this.generate(true);
   }
 }
 
@@ -281,7 +311,7 @@ class PlaygroundTranslator extends PlaygroundController {
     let grid = this.parse(content);
     if (grid) {
       this.stop();
-      this.playground.resetField(grid, false);
+      this.playground.restoreInitialField(grid);
       this.init();
       console.log("loaded");
     } else {
@@ -317,6 +347,19 @@ class PlaygroundTranslator extends PlaygroundController {
         });
       }
     });
+
+    let save_image_btn = document.querySelector("#save-image");
+    save_image_btn.addEventListener("click", () => {
+      link.href = this.saveImage();
+      link.download = `GOL-${Date.now()}.png`;
+      link.click();
+      window.URL.revokeObjectURL(link.href);
+      // console.log("save-image");
+    });
+  }
+
+  saveImage() {
+    return CTX.canvas.toDataURL();
   }
 }
 
@@ -355,8 +398,8 @@ class Cell {
 }
 
 function clearCanvas() {
-  ctx.fillStyle = "black";
-  ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+  CTX.fillStyle = "black";
+  CTX.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 }
 
 function run() {

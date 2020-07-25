@@ -8,7 +8,7 @@ const CTX = CANVAS.getContext("2d");
 
 const PLAYGROUND_CONFIG_DEFAULTS = {
   debug: false,
-  wait: 300,
+  wait: 10,
   // infinite
   iterations: -1,
   wait_increment: 25,
@@ -156,8 +156,8 @@ class PlaygroundController {
     this.state = this.STATUS.init;
     this.editor = new PlaygroundEditor(this);
     this.translator = new PlaygroundTranslator(this);
+    this.initializeControls();
     if (start) {
-      this.initializeControls();
       this.init();
     }
   }
@@ -287,8 +287,7 @@ class PlaygroundController {
     let wait_slider = document.querySelector("#wait-slider");
     wait_slider.addEventListener("change", () => {
       this.wait = 1000 / wait_slider.value;
-      document.getElementById("wait-duration").innerText =
-        wait_slider.value + " fps";
+      document.getElementById("wait-duration").innerText = wait_slider.value;
       // console.log("wait", (1000 / wait_slider.value).toFixed(0));
     });
   }
@@ -444,8 +443,8 @@ class PlaygroundTranslator {
   load(content) {
     let grid = this.parse(content);
     if (grid) {
-      this.controller.restart();
       this.controller.playground.restoreInitialField(grid);
+      this.controller.restart();
       console.log("loaded");
     } else {
       console.log("invalid field");
@@ -555,7 +554,24 @@ function run() {
     CANVAS_HEIGHT / PIXEL_SIZE,
     CANVAS_WIDTH / PIXEL_SIZE
   );
-  new PlaygroundController(plg);
+  let controller = new PlaygroundController(plg, false);
+  let initial_pattern = `
+------------------------------------------
+------------------------------0-----------
+-----------------------------0-0----------
+------------00---------------00-0----00---
+------------0-0--------------00-00---00---
+---00--00------0-------------00-0---------
+---00-0--0--0--0-------------0-0----------
+-------00------0--------0-----0-----------
+------------0-0-------0-0-----------------
+------------00---------00-----------------
+------------------------------------------
+------------------------------------------
+------------------------------------------
+------------------------------------------`;
+  controller.translator.load(initial_pattern);
+  controller.play();
 }
 
 run();

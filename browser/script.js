@@ -216,12 +216,12 @@ class Playground {
       if (grid[cell.row]) {
         cell.alive = row[cell.col]
           ? row[cell.col].alive
-          : field != null
+          : field == null
           ? this.initial_state[cell.row][cell.col].alive
           : false;
       } else {
         cell.alive =
-          field != null ? this.initial_state[cell.row][cell.col].alive : false;
+          field == null ? this.initial_state[cell.row][cell.col].alive : false;
       }
 
       cell.generation = 0;

@@ -1,4 +1,4 @@
-const PIXEL_SIZE = 2;
+const PIXEL_SIZE = 5;
 const CANVAS_WIDTH = window.innerWidth;
 const CANVAS_HEIGHT = window.innerHeight;
 const canvas = document.querySelector("#canvas");
@@ -10,7 +10,7 @@ const PLAYGROUND_CONFIG_DEFAULTS = {
   wait: 301,
   // infinite
   iterations: -1,
-  wait_increment: 50,
+  wait_increment: 25,
   fill_ratio: 0.35,
   generation_color(x) {
     let color;
@@ -172,9 +172,22 @@ class Playground {
     this.apply(process_cell);
   }
 
-  resetField() {
+  resetField(field = null, preserve_life = true) {
     const process_cell = (cell) => {
-      cell.alive = this.initial_state[cell.row][cell.col].alive;
+      let grid = field ? field : this.initial_state;
+      let row = grid[cell.row] || this.initial_state[cell.row];
+      if (grid[cell.row]) {
+        cell.alive = row[cell.col]
+          ? row[cell.col].alive
+          : preserve_life
+          ? this.initial_state[cell.row][cell.col].alive
+          : false;
+      } else {
+        cell.alive = preserve_life
+          ? this.initial_state[cell.row][cell.col].alive
+          : false;
+      }
+
       cell.generation = 0;
     };
     this.apply(process_cell);
@@ -215,14 +228,84 @@ class Playground {
   }
 }
 
-class PlaygroundTranslator {
+class PlaygroundTranslator extends PlaygroundController {
+  chars = {
+    0: "-",
+    1: "0",
+  };
   constructor(playground) {
-    this.playground = playground;
+    super(playground);
+    this.initializeControls();
+    this.initializeTranslator();
+    this.init();
   }
-  translate() {}
-  save() {}
-  load() {}
-  debug() {}
+  parse(content, char_map = { "-": false, "0": true }) {
+    let string_rows = content.trim().split("\n");
+    let char_grid = string_rows.map((r) => r.trim().split(""));
+    if (!char_grid.every((row) => row.length === char_grid[0].length)) {
+      return null;
+    }
+    return char_grid.map((row, row_index) =>
+      row.map(
+        (char, col_index) => new Cell(row_index, col_index, char_map[char])
+      )
+    );
+  }
+
+  stringify() {
+    let grid = [];
+    const process_cell = (cell) => {
+      grid[cell.row] = grid[cell.row] || [];
+      grid[cell.row].push(this.chars[Number(cell.alive)]);
+    };
+    this.playground.apply(process_cell);
+    return grid.map((x) => x.join("")).join("\n");
+  }
+  save() {
+    let blob = new Blob([this.stringify()]);
+    return URL.createObjectURL(blob);
+  }
+  load(content) {
+    let grid = this.parse(content);
+    if (grid) {
+      this.stop();
+      this.playground.resetField(grid, false);
+      this.init();
+      console.log("loaded");
+    } else {
+      console.log("invalid field");
+    }
+  }
+
+  initializeTranslator() {
+    let link = document.createElement("a");
+    let save_button = document.querySelector("#save");
+    save_button.addEventListener("click", () => {
+      link.href = this.save();
+      link.download = `GOL-${Date.now()}.txt`;
+      link.click();
+      window.URL.revokeObjectURL(link.href);
+      // console.log("save");
+    });
+
+    let load_button = document.querySelector("#load");
+    // prompt to open file
+    let file_element = document.getElementById("file-select");
+    load_button.addEventListener("click", () => {
+      file_element.click();
+      // console.log("load-returned");
+    });
+
+    file_element.addEventListener("input", () => {
+      let file = file_element.files[0];
+      if (file) {
+        file.text().then((content) => {
+          this.load(content);
+          file_element.value = "";
+        });
+      }
+    });
+  }
 }
 
 class Cell {
@@ -269,9 +352,7 @@ function run() {
     CANVAS_HEIGHT / PIXEL_SIZE,
     CANVAS_WIDTH / PIXEL_SIZE
   );
-  let controller = new PlaygroundController(plg);
-  controller.initializeControls();
-  controller.init();
+  new PlaygroundTranslator(plg);
 }
 
 run();

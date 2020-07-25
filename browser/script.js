@@ -74,9 +74,11 @@ class PlaygroundController {
     document.getElementById("pause-play").innerHTML = "pause";
   }
 
-  stop() {
-    this.iter_count = 0;
-    document.getElementById("iteration-number").innerText = "0";
+  stop(is_pseudo_stop = false) {
+    if (!is_pseudo_stop) {
+      this.iter_count = 0;
+      document.getElementById("iteration-number").innerText = "0";
+    }
     clearInterval(this.player);
     this.player = null;
     this.state = this.STATUS.init;
@@ -109,7 +111,8 @@ class PlaygroundController {
   }
   set wait(x) {
     let current = this.state;
-    this.stop();
+    let current_iter = this.iter_count;
+    this.stop(true);
     this.#wait = x;
     this.init();
     if (current === this.STATUS.running) this.play();
@@ -150,9 +153,9 @@ class PlaygroundController {
     });
     let wait_slider = document.querySelector("#wait-slider");
     wait_slider.addEventListener("change", () => {
-      this.wait = wait_slider.value;
+      this.wait = 1000 / wait_slider.value;
       document.getElementById("wait-duration").innerText =
-        wait_slider.value + " ms";
+        wait_slider.value + " fps";
       // console.log("wait", wait_slider.value);
     });
   }

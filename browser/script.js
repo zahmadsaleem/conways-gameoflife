@@ -1,4 +1,4 @@
-const PIXEL_SIZE = 5;
+const PIXEL_SIZE = 15;
 const CANVAS_WIDTH = window.innerWidth;
 const CANVAS_HEIGHT = window.innerHeight;
 const canvas = document.querySelector("#canvas");
@@ -7,6 +7,7 @@ canvas.height = CANVAS_HEIGHT;
 const ctx = canvas.getContext("2d");
 
 const PLAYGROUND_CONFIG_DEFAULTS = {
+  debug: false,
   wait: 301,
   // infinite
   iterations: -1,
@@ -30,6 +31,8 @@ const PLAYGROUND_CONFIG_DEFAULTS = {
     return color;
   },
 };
+
+class PlaygroundBase {}
 
 class PlaygroundController {
   STATUS = {
@@ -155,7 +158,7 @@ class Playground {
     return grid;
   }
 
-  draw() {
+  draw(debug = PLAYGROUND_CONFIG_DEFAULTS.debug) {
     const process_cell = (cell) => {
       if (cell.alive) {
         ctx.fillStyle = PLAYGROUND_CONFIG_DEFAULTS.generation_color(
@@ -166,6 +169,14 @@ class Playground {
           cell.row * PIXEL_SIZE,
           PIXEL_SIZE,
           PIXEL_SIZE
+        );
+      }
+      if (debug) {
+        ctx.fillStyle = "white";
+        ctx.fillText(
+          cell.neighbours(this).length.toString(),
+          cell.col * PIXEL_SIZE + PIXEL_SIZE / 2,
+          cell.row * PIXEL_SIZE + PIXEL_SIZE / 2
         );
       }
     };
@@ -225,7 +236,7 @@ class Playground {
   }
 
   isValidCell(row, col) {
-    return col >= 0 && col < this.columns && row > 0 && row < this.rows;
+    return col >= 0 && col < this.columns && row >= 0 && row < this.rows;
   }
 }
 

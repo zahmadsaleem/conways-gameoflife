@@ -1,4 +1,4 @@
-const PIXEL_SIZE = 15;
+const PIXEL_SIZE = 10;
 const CANVAS_WIDTH = window.innerWidth - 20;
 const CANVAS_HEIGHT = window.innerHeight - 20;
 const CANVAS = document.querySelector("#canvas");
@@ -13,6 +13,7 @@ const PLAYGROUND_CONFIG_DEFAULTS = {
   iterations: -1,
   wait_increment: 25,
   fill_ratio: 0.35,
+  show_grid: true,
   generation_color(x) {
     let color;
     switch (true) {
@@ -32,9 +33,112 @@ const PLAYGROUND_CONFIG_DEFAULTS = {
   },
 };
 
-class PlaygroundBase {}
+class PlaygroundEditor {
+  #is_editing = false;
+  #is_drawing = false;
+  current_image;
+  constructor(controller) {
+    this.controller = controller;
+  }
+  initialize() {
+    this.saveCurrentImage();
+    CANVAS.addEventListener("mousemove", this.refreshCrossHair);
+    CANVAS.addEventListener("mousemove", this.debouncedChangeCell);
+    CANVAS.addEventListener("mousedown", this.startEdit);
+    window.addEventListener("mouseup", this.stopEdit);
+  }
 
-class PlaygroundCreator {}
+  refreshCrossHair = (e) => {
+    let [x, y] = this.getMouseRowCol(e.offsetX, e.offsetY);
+    CTX.putImageData(this.current_image, 0, 0);
+    CTX.strokeStyle = "white";
+    this.drawCrossHair(x + PIXEL_SIZE / 2, y + PIXEL_SIZE / 2);
+    this.fillClosestPixel(x, y);
+  };
+
+  fillClosestPixel(x, y) {
+    CTX.strokeRect(x, y, PIXEL_SIZE, PIXEL_SIZE);
+  }
+
+  saveCurrentImage() {
+    this.current_image = CTX.getImageData(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+  }
+
+  drawCrossHair = (x, y) => {
+    CTX.beginPath();
+    CTX.moveTo(x, 0);
+    CTX.lineTo(x, CANVAS_HEIGHT);
+    CTX.moveTo(0, y);
+    CTX.lineTo(CANVAS_WIDTH, y);
+    CTX.closePath();
+    CTX.stroke();
+  };
+
+  destroy() {
+    CANVAS.removeEventListener("mousemove", this.refreshCrossHair);
+    CANVAS.removeEventListener("mousemove", this.debouncedChangeCell);
+    CANVAS.removeEventListener("mousedown", this.startEdit);
+    window.removeEventListener("mouseup", this.stopEdit);
+  }
+
+  getMouseRowCol(x, y) {
+    x = x - (x % PIXEL_SIZE);
+    y = y - (y % PIXEL_SIZE);
+    return [x, y];
+  }
+
+  changeCell = (e) => {
+    if (this.#is_drawing) {
+      let [x, y] = this.getMouseRowCol(e.offsetX, e.offsetY);
+      let cell = this.controller.playground.field[y / PIXEL_SIZE][
+        x / PIXEL_SIZE
+      ];
+      if (cell) {
+        cell.alive = !cell.alive;
+      }
+
+      this.controller.restart(true);
+      this.saveCurrentImage();
+    }
+  };
+
+  get is_editing() {
+    return this.#is_editing;
+  }
+
+  set is_editing(val) {
+    if (val === true) {
+      this.controller.stop();
+      this.controller.setButtonsDisabled(true);
+      this.initialize();
+    } else {
+      if (this.#is_editing) {
+        this.destroy();
+        this.controller.restart(true);
+        this.saveCurrentImage();
+        this.controller.setButtonsDisabled(false);
+      }
+    }
+    this.#is_editing = !this.#is_editing;
+  }
+
+  startEdit = (e) => {
+    this.#is_drawing = true;
+    this.debouncedChangeCell(e);
+  };
+
+  debouncedChangeCell = (e) => {
+    let debounced;
+    (() => {
+      clearTimeout(debounced);
+      debounced = setTimeout(() => this.changeCell(e), 30);
+    })();
+  };
+
+  stopEdit = () => {
+    this.#is_drawing = false;
+  };
+}
 
 class PlaygroundController {
   STATUS = {
@@ -42,17 +146,27 @@ class PlaygroundController {
     paused: 2,
     init: 0,
   };
-  player;
+  player = null;
   #wait = PLAYGROUND_CONFIG_DEFAULTS.wait;
   iter_count = 0;
-  constructor(playground) {
+  editor;
+  translator;
+  constructor(playground, start = true) {
     this.playground = playground;
     this.state = this.STATUS.init;
+    this.editor = new PlaygroundEditor(this);
+    this.translator = new PlaygroundTranslator(this);
+    if (start) {
+      this.initializeControls();
+      this.init();
+    }
   }
 
   init(iterations = PLAYGROUND_CONFIG_DEFAULTS.iterations) {
     clearCanvas();
     this.playground.draw();
+    if (this.player !== null)
+      throw Error("initiated without stopping existing player");
     this.player = setInterval(() => {
       if (this.state === this.STATUS.running) {
         this.next();
@@ -84,13 +198,20 @@ class PlaygroundController {
     this.state = this.STATUS.init;
   }
 
+  restart(is_pseudo_stop = false) {
+    this.stop(is_pseudo_stop);
+    this.init();
+  }
+
   reset(is_preserve = true) {
-    if (this.state !== this.STATUS.init || !is_preserve) {
-      this.stop();
-      is_preserve
-        ? this.playground.restoreInitialField()
-        : this.playground.killAllCells();
-      this.init();
+    if (this.state === this.STATUS.init && is_preserve) return;
+    this.stop();
+    is_preserve
+      ? this.playground.restoreInitialField()
+      : this.playground.killAllCells();
+    this.init();
+    if (this.editor.is_editing) {
+      this.editor.saveCurrentImage();
     }
   }
 
@@ -102,6 +223,7 @@ class PlaygroundController {
 
   next() {
     clearCanvas();
+    if (this.state === this.STATUS.init) this.state = this.STATUS.paused;
     this.playground.update();
     this.playground.draw();
     this.iter_count++;
@@ -111,11 +233,15 @@ class PlaygroundController {
   }
   set wait(x) {
     let current = this.state;
-    let current_iter = this.iter_count;
     this.stop(true);
     this.#wait = x;
     this.init();
     if (current === this.STATUS.running) this.play();
+  }
+
+  setButtonsDisabled(is_disable = true) {
+    let ids = ["load", "pause-play", "next", "reset", "randomize"];
+    ids.map((id) => (document.getElementById(id).disabled = is_disable));
   }
 
   initializeControls() {
@@ -149,14 +275,21 @@ class PlaygroundController {
     let randomize_btn = document.querySelector("#randomize");
     randomize_btn.addEventListener("click", () => {
       this.randomize();
-      console.log("randomize");
+      // console.log("randomize");
+    });
+    let edit_btn = document.querySelector("#edit");
+    edit_btn.addEventListener("click", () => {
+      this.editor.is_editing = !this.editor.is_editing;
+      if (this.editor.is_editing) edit_btn.innerHTML = "stop editing";
+      else edit_btn.innerHTML = "edit";
+      // console.log("edit");
     });
     let wait_slider = document.querySelector("#wait-slider");
     wait_slider.addEventListener("change", () => {
       this.wait = 1000 / wait_slider.value;
       document.getElementById("wait-duration").innerText =
         wait_slider.value + " fps";
-      // console.log("wait", wait_slider.value);
+      // console.log("wait", (1000 / wait_slider.value).toFixed(0));
     });
   }
 }
@@ -273,16 +406,14 @@ class Playground {
   }
 }
 
-class PlaygroundTranslator extends PlaygroundController {
+class PlaygroundTranslator {
   chars = {
     0: "-",
     1: "0",
   };
-  constructor(playground) {
-    super(playground);
-    this.initializeControls();
+  constructor(controller) {
+    this.controller = controller;
     this.initializeTranslator();
-    this.init();
   }
   parse(content, char_map = { "-": false, "0": true }) {
     let string_rows = content.trim().split("\n");
@@ -303,7 +434,7 @@ class PlaygroundTranslator extends PlaygroundController {
       grid[cell.row] = grid[cell.row] || [];
       grid[cell.row].push(this.chars[Number(cell.alive)]);
     };
-    this.playground.apply(process_cell);
+    this.controller.playground.apply(process_cell);
     return grid.map((x) => x.join("")).join("\n");
   }
   save() {
@@ -313,9 +444,8 @@ class PlaygroundTranslator extends PlaygroundController {
   load(content) {
     let grid = this.parse(content);
     if (grid) {
-      this.stop();
-      this.playground.restoreInitialField(grid);
-      this.init();
+      this.controller.restart();
+      this.controller.playground.restoreInitialField(grid);
       console.log("loaded");
     } else {
       console.log("invalid field");
@@ -400,9 +530,24 @@ class Cell {
   }
 }
 
-function clearCanvas() {
+function clearCanvas(show_grid = PLAYGROUND_CONFIG_DEFAULTS.show_grid) {
   CTX.fillStyle = "black";
   CTX.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+  CTX.strokeStyle = "#303030";
+  if (show_grid) {
+    CTX.beginPath();
+    for (let i = 0; i < CANVAS_HEIGHT; i += PIXEL_SIZE) {
+      CTX.moveTo(0, i);
+      CTX.lineTo(CANVAS_WIDTH, i);
+    }
+    for (let i = 0; i < CANVAS_WIDTH; i += PIXEL_SIZE) {
+      CTX.moveTo(i, 0);
+      CTX.lineTo(i, CANVAS_HEIGHT);
+    }
+    CTX.closePath();
+    CTX.stroke();
+  }
+  CTX.strokeStyle = null;
 }
 
 function run() {
@@ -410,7 +555,7 @@ function run() {
     CANVAS_HEIGHT / PIXEL_SIZE,
     CANVAS_WIDTH / PIXEL_SIZE
   );
-  new PlaygroundTranslator(plg);
+  new PlaygroundController(plg);
 }
 
 run();

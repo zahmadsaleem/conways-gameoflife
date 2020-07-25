@@ -191,6 +191,7 @@ class Playground {
       cell.generation = 0;
     };
     this.apply(process_cell);
+    this.initial_state = this.field;
   }
 
   update() {

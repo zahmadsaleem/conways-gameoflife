@@ -294,6 +294,8 @@ class PlaygroundController {
 }
 
 class Playground {
+  is_wrap_rows = true;
+  is_wrap_columns = true;
   constructor(rows, columns) {
     this.rows = rows;
     this.columns = columns;
@@ -393,7 +395,31 @@ class Playground {
   }
 
   isValidCell(row, col) {
-    return col >= 0 && col < this.columns && row >= 0 && row < this.rows;
+    return this.isValidColumn(col) && this.isValidRow(row);
+  }
+
+  isValidColumn(col) {
+    return col >= 0 && col < this.columns;
+  }
+
+  isValidRow(row) {
+    return row >= 0 && row < this.rows;
+  }
+
+  getValidIndex(row, col) {
+    if (!this.isValidCell(row.col)) {
+      if (this.is_wrap_rows) {
+        if (row === this.rows) row = 0;
+        else if (row === -1) row = this.rows - 1;
+        else row = this.isValidRow(row) ? row : null;
+      }
+      if (this.is_wrap_columns) {
+        if (col === this.columns) col = 0;
+        else if (col === -1) col = this.columns - 1;
+        else col = this.isValidColumn(col) ? col : null;
+      }
+    }
+    return [row, col];
   }
 
   killAllCells() {
@@ -440,6 +466,7 @@ class PlaygroundTranslator {
     let blob = new Blob([this.stringify()]);
     return URL.createObjectURL(blob);
   }
+
   load(content) {
     let grid = this.parse(content);
     if (grid) {
@@ -448,6 +475,16 @@ class PlaygroundTranslator {
       console.log("loaded");
     } else {
       console.log("invalid field");
+    }
+  }
+
+  async loadFromURL(url) {
+    let request = new Request(url);
+    let res = await fetch(request);
+    if (res.ok) {
+      let blob = await res.blob();
+      let content = await blob.text();
+      this.load(content);
     }
   }
 
@@ -510,8 +547,9 @@ class Cell {
         let row = this.row + i;
         let col = this.col + j;
         let neighbor;
-        if (playground.isValidCell(row, col))
-          neighbor = playground.field[row][col];
+        [row, col] = playground.getValidIndex(row, col);
+        // console.log(`${row},${col}`);
+        if (row != null && col != null) neighbor = playground.field[row][col];
         if (neighbor && neighbor !== this && neighbor.alive)
           neighbour_list.push(neighbor);
       }
@@ -551,27 +589,15 @@ function clearCanvas(show_grid = PLAYGROUND_CONFIG_DEFAULTS.show_grid) {
 
 function run() {
   let plg = new Playground(
-    CANVAS_HEIGHT / PIXEL_SIZE,
-    CANVAS_WIDTH / PIXEL_SIZE
+    (CANVAS_HEIGHT / PIXEL_SIZE) >> 0,
+    (CANVAS_WIDTH / PIXEL_SIZE) >> 0
   );
   let controller = new PlaygroundController(plg, false);
-  let initial_pattern = `
-------------------------------------------
-------------------------------0-----------
------------------------------0-0----------
-------------00---------------00-0----00---
-------------0-0--------------00-00---00---
----00--00------0-------------00-0---------
----00-0--0--0--0-------------0-0----------
--------00------0--------0-----0-----------
-------------0-0-------0-0-----------------
-------------00---------00-----------------
-------------------------------------------
-------------------------------------------
-------------------------------------------
-------------------------------------------`;
-  controller.translator.load(initial_pattern);
-  controller.play();
+  controller.translator
+    .loadFromURL(
+      "https://raw.githubusercontent.com/zahmadsaleem/conways-gameoflife/master/samples/hammer-head-spaceship.txt"
+    )
+    .then(() => controller.play());
 }
 
 run();

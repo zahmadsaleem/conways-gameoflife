@@ -151,6 +151,7 @@ class PlaygroundController {
   iter_count = 0;
   editor;
   translator;
+  countWorker;
   constructor(playground, start = true) {
     this.playground = playground;
     this.state = this.STATUS.init;
@@ -176,6 +177,7 @@ class PlaygroundController {
       if (iterations === 0) clearInterval(this.player);
     }, this.#wait);
     document.getElementById("pause-play").innerHTML = "start";
+    this.count();
   }
 
   pause() {
@@ -230,6 +232,7 @@ class PlaygroundController {
     document.getElementById(
       "iteration-number"
     ).innerText = this.iter_count.toString();
+    this.count();
   }
   set wait(x) {
     let current = this.state;
@@ -244,11 +247,22 @@ class PlaygroundController {
     ids.map((id) => (document.getElementById(id).disabled = is_disable));
   }
 
+  count() {
+    let _field = this.playground.field;
+    this.countWorker.postMessage({ action: "count-live", field: _field });
+  }
+
+  updateCountUI(count) {
+    document.getElementById("live-count").innerHTML = count.toString();
+  }
+
   initializeControls() {
+    this.countWorker = new Worker("worker.js");
+    this.countWorker.onmessage = (e) => this.updateCountUI(e.data);
     let toggle_btn = document.getElementById("toggle-controls");
     toggle_btn.addEventListener("click", () => {
       document.getElementById("controls").classList.toggle("collapse");
-      console.log("collapse");
+      // console.log("collapse");
     });
     let pause_play_btn = document.querySelector("#pause-play");
     pause_play_btn.addEventListener("click", () => {
@@ -500,9 +514,9 @@ class PlaygroundTranslator {
     if (grid) {
       this.controller.playground.restoreInitialField(grid);
       this.controller.restart();
-      console.log("loaded");
+      // console.log("loaded");
     } else {
-      console.log("invalid field");
+      console.error("invalid field");
     }
   }
 

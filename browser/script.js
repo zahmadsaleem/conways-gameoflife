@@ -11,7 +11,6 @@ const PLAYGROUND_CONFIG_DEFAULTS = {
   wait: 10,
   // infinite
   iterations: -1,
-  wait_increment: 25,
   fill_ratio: 0.35,
   show_grid: true,
   generation_color(x) {
@@ -33,289 +32,21 @@ const PLAYGROUND_CONFIG_DEFAULTS = {
   },
 };
 
-class PlaygroundEditor {
-  #is_editing = false;
-  #is_drawing = false;
-  current_image;
-  constructor(controller) {
-    this.controller = controller;
-  }
-  initialize() {
-    this.saveCurrentImage();
-    CANVAS.addEventListener("mousemove", this.refreshCrossHair);
-    CANVAS.addEventListener("mousemove", this.debouncedChangeCell);
-    CANVAS.addEventListener("mousedown", this.startEdit);
-    window.addEventListener("mouseup", this.stopEdit);
+class Cell {
+  constructor(row, col, alive = false) {
+    this.row = row;
+    this.col = col;
+    this.alive = alive;
+    this.generation = 0;
   }
 
-  refreshCrossHair = (e) => {
-    let [x, y] = this.getMouseRowCol(e.offsetX, e.offsetY);
-    CTX.putImageData(this.current_image, 0, 0);
-    CTX.strokeStyle = "white";
-    this.drawCrossHair(x + PIXEL_SIZE / 2, y + PIXEL_SIZE / 2);
-    this.fillClosestPixel(x, y);
-  };
-
-  fillClosestPixel(x, y) {
-    CTX.strokeRect(x, y, PIXEL_SIZE, PIXEL_SIZE);
+  die() {
+    this.alive = false;
+    this.generation = 0;
   }
 
-  saveCurrentImage() {
-    this.current_image = CTX.getImageData(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
-  }
-
-  drawCrossHair = (x, y) => {
-    CTX.beginPath();
-    CTX.moveTo(x, 0);
-    CTX.lineTo(x, CANVAS_HEIGHT);
-    CTX.moveTo(0, y);
-    CTX.lineTo(CANVAS_WIDTH, y);
-    CTX.closePath();
-    CTX.stroke();
-  };
-
-  destroy() {
-    CANVAS.removeEventListener("mousemove", this.refreshCrossHair);
-    CANVAS.removeEventListener("mousemove", this.debouncedChangeCell);
-    CANVAS.removeEventListener("mousedown", this.startEdit);
-    window.removeEventListener("mouseup", this.stopEdit);
-  }
-
-  getMouseRowCol(x, y) {
-    x = x - (x % PIXEL_SIZE);
-    y = y - (y % PIXEL_SIZE);
-    return [x, y];
-  }
-
-  changeCell = (e) => {
-    if (this.#is_drawing) {
-      let [x, y] = this.getMouseRowCol(e.offsetX, e.offsetY);
-      let cell = this.controller.playground.field[y / PIXEL_SIZE][
-        x / PIXEL_SIZE
-      ];
-      if (cell) {
-        cell.alive = !cell.alive;
-      }
-
-      this.controller.restart(true);
-      this.saveCurrentImage();
-    }
-  };
-
-  get is_editing() {
-    return this.#is_editing;
-  }
-
-  set is_editing(val) {
-    if (val === true) {
-      this.controller.stop();
-      this.controller.setButtonsDisabled(true);
-      this.initialize();
-    } else {
-      if (this.#is_editing) {
-        this.destroy();
-        this.controller.restart(true);
-        this.saveCurrentImage();
-        this.controller.setButtonsDisabled(false);
-      }
-    }
-    this.#is_editing = !this.#is_editing;
-  }
-
-  startEdit = (e) => {
-    this.#is_drawing = true;
-    this.debouncedChangeCell(e);
-  };
-
-  debouncedChangeCell = (e) => {
-    let debounced;
-    (() => {
-      clearTimeout(debounced);
-      debounced = setTimeout(() => this.changeCell(e), 30);
-    })();
-  };
-
-  stopEdit = () => {
-    this.#is_drawing = false;
-  };
-}
-
-class PlaygroundController {
-  STATUS = {
-    running: 1,
-    paused: 2,
-    init: 0,
-  };
-  player = null;
-  #wait = PLAYGROUND_CONFIG_DEFAULTS.wait;
-  iter_count = 0;
-  editor;
-  translator;
-  countWorker;
-  constructor(playground, start = true) {
-    this.playground = playground;
-    this.state = this.STATUS.init;
-    this.editor = new PlaygroundEditor(this);
-    this.translator = new PlaygroundTranslator(this);
-    this.initializeControls();
-    if (start) {
-      this.init();
-    }
-  }
-
-  init(iterations = PLAYGROUND_CONFIG_DEFAULTS.iterations) {
-    clearCanvas();
-    this.playground.draw();
-    if (this.player !== null)
-      throw Error("initiated without stopping existing player");
-    this.player = setInterval(() => {
-      if (this.state === this.STATUS.running) {
-        this.next();
-        iterations--;
-      }
-      // status turns to init on reset
-      if (iterations === 0) clearInterval(this.player);
-    }, this.#wait);
-    document.getElementById("pause-play").innerHTML = "start";
-    this.count();
-  }
-
-  pause() {
-    this.state = this.STATUS.paused;
-    document.getElementById("pause-play").innerHTML = "play";
-  }
-
-  play() {
-    this.state = this.STATUS.running;
-    document.getElementById("pause-play").innerHTML = "pause";
-  }
-
-  stop(is_pseudo_stop = false) {
-    if (!is_pseudo_stop) {
-      this.iter_count = 0;
-      document.getElementById("iteration-number").innerText = "0";
-    }
-    clearInterval(this.player);
-    this.player = null;
-    this.state = this.STATUS.init;
-  }
-
-  restart(is_pseudo_stop = false) {
-    this.stop(is_pseudo_stop);
-    this.init();
-  }
-
-  reset(is_preserve = true) {
-    if (this.state === this.STATUS.init && is_preserve) return;
-    this.stop();
-    is_preserve
-      ? this.playground.restoreInitialField()
-      : this.playground.killAllCells();
-    this.init();
-    if (this.editor.is_editing) {
-      this.editor.saveCurrentImage();
-    }
-  }
-
-  randomize() {
-    this.stop();
-    this.playground.randomizeField();
-    this.init();
-  }
-
-  next() {
-    clearCanvas();
-    if (this.state === this.STATUS.init) this.state = this.STATUS.paused;
-    this.playground.update();
-    this.playground.draw();
-    this.iter_count++;
-    document.getElementById(
-      "iteration-number"
-    ).innerText = this.iter_count.toString();
-    this.count();
-  }
-  set wait(x) {
-    let current = this.state;
-    this.stop(true);
-    this.#wait = x;
-    this.init();
-    if (current === this.STATUS.running) this.play();
-  }
-
-  setButtonsDisabled(is_disable = true) {
-    let ids = ["load", "pause-play", "next", "reset", "randomize"];
-    ids.map((id) => (document.getElementById(id).disabled = is_disable));
-  }
-
-  count() {
-    let _field = this.playground.field;
-    this.countWorker.postMessage({ action: "count-live", field: _field });
-  }
-
-  updateCountUI(count) {
-    document.getElementById("live-count").innerHTML = count.toString();
-  }
-
-  initializeControls() {
-    this.countWorker = new Worker("worker.js");
-    this.countWorker.onmessage = (e) => this.updateCountUI(e.data);
-    let toggle_btn = document.getElementById("toggle-controls");
-    toggle_btn.addEventListener("click", () => {
-      document.getElementById("controls").classList.toggle("collapse");
-      // console.log("collapse");
-    });
-    let pause_play_btn = document.querySelector("#pause-play");
-    pause_play_btn.addEventListener("click", () => {
-      if (this.state === this.STATUS.running) this.pause();
-      else this.play();
-      // console.log("play");
-    });
-    let next_btn = document.querySelector("#next");
-    next_btn.addEventListener("click", () => {
-      if (this.state === this.STATUS.init || this.state === this.STATUS.paused)
-        this.next();
-      // console.log("next");
-    });
-    let reset_btn = document.querySelector("#reset");
-    reset_btn.addEventListener("click", () => {
-      this.reset();
-      // console.log("reset");
-    });
-    let clear_btn = document.querySelector("#clear");
-    clear_btn.addEventListener("click", () => {
-      this.reset(false);
-      // console.log("clear");
-    });
-    let randomize_btn = document.querySelector("#randomize");
-    randomize_btn.addEventListener("click", () => {
-      this.randomize();
-      // console.log("randomize");
-    });
-    let edit_btn = document.querySelector("#edit");
-    edit_btn.addEventListener("click", () => {
-      this.editor.is_editing = !this.editor.is_editing;
-      if (this.editor.is_editing) edit_btn.innerHTML = "stop editing";
-      else edit_btn.innerHTML = "edit";
-      // console.log("edit");
-    });
-    let wait_slider = document.querySelector("#wait-slider");
-    wait_slider.addEventListener("change", () => {
-      this.wait = 1000 / wait_slider.value;
-      document.getElementById("wait-duration").innerText = wait_slider.value;
-      // console.log("wait", (1000 / wait_slider.value).toFixed(0));
-    });
-
-    let is_wrap_col = document.querySelector("#wrap-columns");
-    is_wrap_col.addEventListener("change", () => {
-      this.playground.is_wrap_columns = is_wrap_col.checked;
-      // console.log("wrap columns", is_wrap_col.value );
-    });
-
-    let is_wrap_row = document.querySelector("#wrap-rows");
-    is_wrap_row.addEventListener("change", () => {
-      this.playground.is_wrap_rows = is_wrap_row.checked;
-      // console.log("wrap columns", is_wrap_col.value );
-    });
+  live() {
+    this.alive = true;
   }
 }
 
@@ -325,7 +56,7 @@ class Playground {
   constructor(rows, columns) {
     this.rows = rows;
     this.columns = columns;
-    this.field = this.generate(true);
+    this.field = this.generate();
     this.initial_state = this.field;
   }
 
@@ -488,6 +219,296 @@ class Playground {
   randomizeField() {
     this.field = this.initial_state = this.generate(true);
   }
+
+  // resize(rows, columns) {
+  //   if (rows > this.rows) {
+  //     for (let i = this.rows; i < rows - this.rows; i++) {
+  //       this.field[i] = [];
+  //     }
+  //   }
+  // }
+}
+
+class PlaygroundController extends Playground {
+  STATUS = {
+    running: 1,
+    paused: 2,
+    init: 0,
+  };
+  player = null;
+  #wait = PLAYGROUND_CONFIG_DEFAULTS.wait;
+  iter_count = 0;
+  editor;
+  translator;
+  countWorker;
+  constructor(rows, cols, start = true) {
+    super(rows, cols);
+    this.state = this.STATUS.init;
+    this.editor = new PlaygroundEditor(this);
+    this.translator = new PlaygroundTranslator(this);
+    this.initializeControls();
+    if (start) {
+      this.init();
+    }
+  }
+
+  init(iterations = PLAYGROUND_CONFIG_DEFAULTS.iterations) {
+    clearCanvas();
+    this.draw();
+    if (this.player !== null)
+      throw Error("initiated without stopping existing player");
+    this.player = setInterval(() => {
+      if (this.state === this.STATUS.running) {
+        this.next();
+        iterations--;
+      }
+      // status turns to init on reset
+      if (iterations === 0) clearInterval(this.player);
+    }, this.#wait);
+    document.getElementById("pause-play").innerHTML = "start";
+    this.count();
+  }
+
+  pause() {
+    this.state = this.STATUS.paused;
+    document.getElementById("pause-play").innerHTML = "play";
+  }
+
+  play() {
+    this.state = this.STATUS.running;
+    document.getElementById("pause-play").innerHTML = "pause";
+  }
+
+  stop(is_pseudo_stop = false) {
+    if (!is_pseudo_stop) {
+      this.iter_count = 0;
+      document.getElementById("iteration-number").innerText = "0";
+    }
+    clearInterval(this.player);
+    this.player = null;
+    this.state = this.STATUS.init;
+  }
+
+  restart(is_pseudo_stop = false) {
+    this.stop(is_pseudo_stop);
+    this.init();
+  }
+
+  reset(is_preserve = true) {
+    if (this.state === this.STATUS.init && is_preserve) return;
+    this.stop();
+    is_preserve ? this.restoreInitialField() : this.killAllCells();
+    this.init();
+    if (this.editor.is_editing) {
+      this.editor.saveCurrentImage();
+    }
+  }
+
+  randomize() {
+    this.stop();
+    this.randomizeField();
+    this.init();
+  }
+
+  next() {
+    clearCanvas();
+    if (this.state === this.STATUS.init) this.state = this.STATUS.paused;
+    this.update();
+    this.draw();
+    this.iter_count++;
+    document.getElementById(
+      "iteration-number"
+    ).innerText = this.iter_count.toString();
+    this.count();
+  }
+  set wait(x) {
+    let current = this.state;
+    this.stop(true);
+    this.#wait = x;
+    this.init();
+    if (current === this.STATUS.running) this.play();
+  }
+
+  setButtonsDisabled(is_disable = true) {
+    let ids = ["load", "pause-play", "next", "reset", "randomize"];
+    ids.map((id) => (document.getElementById(id).disabled = is_disable));
+  }
+
+  count() {
+    let _field = this.field;
+    this.countWorker.postMessage({ action: "count-live", field: _field });
+  }
+
+  updateCountUI(count) {
+    document.getElementById("live-count").innerHTML = count.toString();
+  }
+
+  initializeControls() {
+    this.countWorker = new Worker("worker.js");
+    this.countWorker.onmessage = (e) => this.updateCountUI(e.data);
+    let toggle_btn = document.getElementById("toggle-controls");
+    toggle_btn.addEventListener("click", () => {
+      document.getElementById("controls").classList.toggle("collapse");
+      // console.log("collapse");
+    });
+    let pause_play_btn = document.querySelector("#pause-play");
+    pause_play_btn.addEventListener("click", () => {
+      if (this.state === this.STATUS.running) this.pause();
+      else this.play();
+      // console.log("play");
+    });
+    let next_btn = document.querySelector("#next");
+    next_btn.addEventListener("click", () => {
+      if (this.state === this.STATUS.init || this.state === this.STATUS.paused)
+        this.next();
+      // console.log("next");
+    });
+    let reset_btn = document.querySelector("#reset");
+    reset_btn.addEventListener("click", () => {
+      this.reset();
+      // console.log("reset");
+    });
+    let clear_btn = document.querySelector("#clear");
+    clear_btn.addEventListener("click", () => {
+      this.reset(false);
+      // console.log("clear");
+    });
+    let randomize_btn = document.querySelector("#randomize");
+    randomize_btn.addEventListener("click", () => {
+      this.randomize();
+      // console.log("randomize");
+    });
+    let edit_btn = document.querySelector("#edit");
+    edit_btn.addEventListener("click", () => {
+      this.editor.is_editing = !this.editor.is_editing;
+      if (this.editor.is_editing) edit_btn.innerHTML = "stop editing";
+      else edit_btn.innerHTML = "edit";
+      // console.log("edit");
+    });
+    let wait_slider = document.querySelector("#wait-slider");
+    wait_slider.addEventListener("change", () => {
+      this.wait = 1000 / wait_slider.value;
+      document.getElementById("wait-duration").innerText = wait_slider.value;
+      // console.log("wait", (1000 / wait_slider.value).toFixed(0));
+    });
+
+    let is_wrap_col = document.querySelector("#wrap-columns");
+    is_wrap_col.addEventListener("change", () => {
+      this.is_wrap_columns = is_wrap_col.checked;
+      // console.log("wrap columns", is_wrap_col.value );
+    });
+
+    let is_wrap_row = document.querySelector("#wrap-rows");
+    is_wrap_row.addEventListener("change", () => {
+      this.is_wrap_rows = is_wrap_row.checked;
+      // console.log("wrap columns", is_wrap_col.value );
+    });
+  }
+}
+
+class PlaygroundEditor {
+  #is_editing = false;
+  #is_drawing = false;
+  current_image;
+  constructor(controller) {
+    this.controller = controller;
+  }
+  initialize() {
+    this.saveCurrentImage();
+    CANVAS.addEventListener("mousemove", this.refreshCrossHair);
+    CANVAS.addEventListener("mousemove", this.debouncedChangeCell);
+    CANVAS.addEventListener("mousedown", this.startEdit);
+    window.addEventListener("mouseup", this.stopEdit);
+  }
+
+  refreshCrossHair = (e) => {
+    let [x, y] = this.getMouseRowCol(e.offsetX, e.offsetY);
+    CTX.putImageData(this.current_image, 0, 0);
+    CTX.strokeStyle = "white";
+    this.drawCrossHair(x + PIXEL_SIZE / 2, y + PIXEL_SIZE / 2);
+    this.fillClosestPixel(x, y);
+  };
+
+  fillClosestPixel(x, y) {
+    CTX.strokeRect(x, y, PIXEL_SIZE, PIXEL_SIZE);
+  }
+
+  saveCurrentImage() {
+    this.current_image = CTX.getImageData(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+  }
+
+  drawCrossHair = (x, y) => {
+    CTX.beginPath();
+    CTX.moveTo(x, 0);
+    CTX.lineTo(x, CANVAS_HEIGHT);
+    CTX.moveTo(0, y);
+    CTX.lineTo(CANVAS_WIDTH, y);
+    CTX.closePath();
+    CTX.stroke();
+  };
+
+  destroy() {
+    CANVAS.removeEventListener("mousemove", this.refreshCrossHair);
+    CANVAS.removeEventListener("mousemove", this.debouncedChangeCell);
+    CANVAS.removeEventListener("mousedown", this.startEdit);
+    window.removeEventListener("mouseup", this.stopEdit);
+  }
+
+  getMouseRowCol(x, y) {
+    x = x - (x % PIXEL_SIZE);
+    y = y - (y % PIXEL_SIZE);
+    return [x, y];
+  }
+
+  changeCell = (e) => {
+    if (this.#is_drawing) {
+      let [x, y] = this.getMouseRowCol(e.offsetX, e.offsetY);
+      let cell = this.controller.field[y / PIXEL_SIZE][x / PIXEL_SIZE];
+      if (cell) {
+        cell.alive = !cell.alive;
+      }
+
+      this.controller.restart(true);
+      this.saveCurrentImage();
+    }
+  };
+
+  get is_editing() {
+    return this.#is_editing;
+  }
+
+  set is_editing(val) {
+    if (val === true) {
+      this.controller.stop();
+      this.controller.setButtonsDisabled(true);
+      this.initialize();
+    } else {
+      if (this.#is_editing) {
+        this.destroy();
+        this.controller.restart(true);
+        this.saveCurrentImage();
+        this.controller.setButtonsDisabled(false);
+      }
+    }
+    this.#is_editing = !this.#is_editing;
+  }
+
+  startEdit = (e) => {
+    this.#is_drawing = true;
+    this.debouncedChangeCell(e);
+  };
+
+  debouncedChangeCell = (e) => {
+    let debounced;
+    (() => {
+      clearTimeout(debounced);
+      debounced = setTimeout(() => this.changeCell(e), 30);
+    })();
+  };
+
+  stopEdit = () => {
+    this.#is_drawing = false;
+  };
 }
 
 class PlaygroundTranslator {
@@ -518,7 +539,7 @@ class PlaygroundTranslator {
       grid[cell.row] = grid[cell.row] || [];
       grid[cell.row].push(this.chars[Number(cell.alive)]);
     };
-    this.controller.playground.apply(process_cell);
+    this.controller.apply(process_cell);
     return grid.map((x) => x.join("")).join("\n");
   }
   save() {
@@ -529,7 +550,7 @@ class PlaygroundTranslator {
   load(content) {
     let grid = this.parse(content);
     if (grid) {
-      this.controller.playground.restoreInitialField(grid);
+      this.controller.restoreInitialField(grid);
       this.controller.restart();
       // console.log("loaded");
     } else {
@@ -591,24 +612,6 @@ class PlaygroundTranslator {
   }
 }
 
-class Cell {
-  constructor(row, col, alive = false) {
-    this.row = row;
-    this.col = col;
-    this.alive = alive;
-    this.generation = 0;
-  }
-
-  die() {
-    this.alive = false;
-    this.generation = 0;
-  }
-
-  live() {
-    this.alive = true;
-  }
-}
-
 function clearCanvas(show_grid = PLAYGROUND_CONFIG_DEFAULTS.show_grid) {
   CTX.fillStyle = "black";
   CTX.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
@@ -630,11 +633,11 @@ function clearCanvas(show_grid = PLAYGROUND_CONFIG_DEFAULTS.show_grid) {
 }
 
 function run() {
-  let plg = new Playground(
+  let controller = new PlaygroundController(
     (CANVAS_HEIGHT / PIXEL_SIZE) >> 0,
-    (CANVAS_WIDTH / PIXEL_SIZE) >> 0
+    (CANVAS_WIDTH / PIXEL_SIZE) >> 0,
+    false
   );
-  let controller = new PlaygroundController(plg, false);
   controller.translator
     .loadFromURL(
       "https://raw.githubusercontent.com/zahmadsaleem/conways-gameoflife/master/samples/hammer-head-spaceship.txt"

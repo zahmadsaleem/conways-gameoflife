@@ -360,7 +360,7 @@ class Playground {
       if (debug) {
         CTX.fillStyle = "white";
         CTX.fillText(
-          cell.neighbours(this).length.toString(),
+          this.neighbours(cell).length.toString(),
           cell.col * PIXEL_SIZE + PIXEL_SIZE / 2,
           cell.row * PIXEL_SIZE + PIXEL_SIZE / 2
         );
@@ -369,6 +369,22 @@ class Playground {
     this.apply(process_cell);
   }
 
+  neighbours(cell) {
+    let neighbour_list = [];
+    for (let i = -1; i <= 1; i++) {
+      for (let j = -1; j <= 1; j++) {
+        let row = cell.row + i;
+        let col = cell.col + j;
+        let neighbor;
+        [row, col] = this.getValidIndex(row, col);
+        // console.log(`${row},${col}`);
+        if (row != null && col != null) neighbor = this.field[row][col];
+        if (neighbor && neighbor !== cell && neighbor.alive)
+          neighbour_list.push(neighbor);
+      }
+    }
+    return neighbour_list;
+  }
   restoreInitialField(field = null) {
     const process_cell = (cell) => {
       let grid = field ? field : this.initial_state;
@@ -391,21 +407,22 @@ class Playground {
   }
 
   update() {
-    let grid = this.generate(false);
+    let grid = [];
     const process_cell = (cell) => {
       // new generated cell from grid
-      let new_cell = grid[cell.row][cell.col];
+      let new_cell = new Cell(cell.row, cell.col, cell.alive);
       // copy state and generation
-      new_cell.alive = cell.alive;
       new_cell.generation = cell.generation;
       // check neighbors of old cell
-      let length = cell.neighbours(this).length;
+      let length = this.neighbours(cell).length;
       if (cell.alive) {
         if (length > 3 || length < 2) new_cell.die();
         else new_cell.generation++;
       } else {
         if (length === 3) new_cell.live();
       }
+      grid[cell.row] = grid[cell.row] || [];
+      grid[cell.row][cell.col] = new_cell;
     };
     this.apply(process_cell);
     this.field = grid;
@@ -580,23 +597,6 @@ class Cell {
     this.col = col;
     this.alive = alive;
     this.generation = 0;
-  }
-
-  neighbours(playground) {
-    let neighbour_list = [];
-    for (let i = -1; i <= 1; i++) {
-      for (let j = -1; j <= 1; j++) {
-        let row = this.row + i;
-        let col = this.col + j;
-        let neighbor;
-        [row, col] = playground.getValidIndex(row, col);
-        // console.log(`${row},${col}`);
-        if (row != null && col != null) neighbor = playground.field[row][col];
-        if (neighbor && neighbor !== this && neighbor.alive)
-          neighbour_list.push(neighbor);
-      }
-    }
-    return neighbour_list;
   }
 
   die() {

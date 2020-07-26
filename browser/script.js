@@ -290,6 +290,18 @@ class PlaygroundController {
       document.getElementById("wait-duration").innerText = wait_slider.value;
       // console.log("wait", (1000 / wait_slider.value).toFixed(0));
     });
+
+    let is_wrap_col = document.querySelector("#wrap-columns");
+    is_wrap_col.addEventListener("change", () => {
+      this.playground.is_wrap_columns = is_wrap_col.checked;
+      // console.log("wrap columns", is_wrap_col.value );
+    });
+
+    let is_wrap_row = document.querySelector("#wrap-rows");
+    is_wrap_row.addEventListener("change", () => {
+      this.playground.is_wrap_rows = is_wrap_row.checked;
+      // console.log("wrap columns", is_wrap_col.value );
+    });
   }
 }
 
@@ -408,15 +420,31 @@ class Playground {
 
   getValidIndex(row, col) {
     if (!this.isValidCell(row.col)) {
-      if (this.is_wrap_rows) {
-        if (row === this.rows) row = 0;
-        else if (row === -1) row = this.rows - 1;
-        else row = this.isValidRow(row) ? row : null;
+      // not a valid row
+      if (!this.isValidRow(row)) {
+        // wrap ?
+        if (this.is_wrap_rows) {
+          // check conditions to wrap
+          if (row === this.rows) row = 0;
+          else if (row === -1) row = this.rows - 1;
+          //  doesnt match ? (this condition is never met in neighbours)
+          else row = null;
+        } else {
+          // dont wrap and invalid
+          row = null;
+        }
+      } else {
+        // row is fine
       }
-      if (this.is_wrap_columns) {
-        if (col === this.columns) col = 0;
-        else if (col === -1) col = this.columns - 1;
-        else col = this.isValidColumn(col) ? col : null;
+
+      if (!this.isValidColumn(col)) {
+        if (this.is_wrap_columns) {
+          if (col === this.columns) col = 0;
+          else if (col === -1) col = this.columns - 1;
+          else col = null;
+        } else {
+          col = null;
+        }
       }
     }
     return [row, col];

@@ -28,16 +28,13 @@ body {
   font-family: monospace;
 }
 
-.control-container p {
+.control-container span,
+p {
   color: white;
   font-weight: bold;
   flex: auto;
-  padding: 5px;
-}
-
-input {
-  max-width: 50px;
-  margin: 0 2px 0 2px;
+  min-width: 30px;
+  text-align: center;
 }
 
 #toggle-controls {
@@ -61,4 +58,9 @@ input {
   bottom: 20px;
   background-color: blue;
   padding: 5px;
+}
+
+label {
+  min-width: 80px;
+  padding: 0 2px 0 2px;
 }

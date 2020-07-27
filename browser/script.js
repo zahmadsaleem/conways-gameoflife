@@ -53,10 +53,10 @@ class Cell {
 class Playground {
   is_wrap_rows = true;
   is_wrap_columns = true;
-  pixel_size = PLAYGROUND_CONFIG_DEFAULTS.pixel_size;
-  constructor(height, width) {
-    this.rows = (height / this.pixel_size) >> 0;
-    this.columns = (width / this.pixel_size) >> 0;
+
+  constructor(rows, columns) {
+    this.rows = rows;
+    this.columns = columns;
     this.field = this.generate();
     this.initial_state = this.field;
   }
@@ -76,51 +76,6 @@ class Playground {
     return grid;
   }
 
-  draw(debug = PLAYGROUND_CONFIG_DEFAULTS.debug) {
-    const process_cell = (cell) => {
-      if (cell.alive) {
-        CTX.fillStyle = PLAYGROUND_CONFIG_DEFAULTS.generation_color(
-          cell.generation
-        );
-        CTX.fillRect(
-          cell.col * this.pixel_size,
-          cell.row * this.pixel_size,
-          this.pixel_size,
-          this.pixel_size
-        );
-      }
-      if (debug) {
-        CTX.fillStyle = "white";
-        CTX.fillText(
-          this.neighbours(cell).length.toString(),
-          cell.col * this.pixel_size + this.pixel_size / 2,
-          cell.row * this.pixel_size + this.pixel_size / 2
-        );
-      }
-    };
-    this.apply(process_cell);
-  }
-
-  clearCanvas(show_grid = PLAYGROUND_CONFIG_DEFAULTS.show_grid) {
-    CTX.fillStyle = "black";
-    CTX.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
-    CTX.strokeStyle = "#303030";
-    if (show_grid) {
-      CTX.beginPath();
-      for (let i = 0; i < CANVAS_HEIGHT; i += this.pixel_size) {
-        CTX.moveTo(0, i);
-        CTX.lineTo(CANVAS_WIDTH, i);
-      }
-      for (let i = 0; i < CANVAS_WIDTH; i += this.pixel_size) {
-        CTX.moveTo(i, 0);
-        CTX.lineTo(i, CANVAS_HEIGHT);
-      }
-      CTX.closePath();
-      CTX.stroke();
-    }
-    CTX.strokeStyle = null;
-  }
-
   neighbours(cell) {
     let neighbour_list = [];
     for (let i = -1; i <= 1; i++) {
@@ -137,6 +92,7 @@ class Playground {
     }
     return neighbour_list;
   }
+
   restoreInitialField(field = null) {
     const process_cell = (cell) => {
       let grid = field ? field : this.initial_state;
@@ -262,21 +218,24 @@ class Playground {
 
     // shrink row
     if (colDifference < 0) {
-      this.deleteColsFromEnd(-colDifference);
+      this.deleteColsFromEnd(colDifference);
     }
     this.rows = rows;
     this.columns = columns;
+    this.initial_state = this.field;
   }
 
   addRowsToEnd(rowDifference, columns) {
-    for (let i = this.rows; i < rowDifference; i++) {
-      this.field[i] = this.generateRow(i, columns);
+    for (let i = 0; i < rowDifference; i++) {
+      let row_index = this.rows + i;
+      this.field[row_index] = this.generateRow(row_index, columns);
     }
   }
 
   deleteRowsFromEnd(rowDifference) {
-    for (let i = this.rows; i < -rowDifference; i++) {
-      this.field.splice(rowDifference);
+    rowDifference = Math.abs(rowDifference);
+    for (let i = 0; i < rowDifference; i++) {
+      this.field.splice(0, rowDifference);
     }
   }
 
@@ -286,9 +245,10 @@ class Playground {
     });
   }
 
-  deleteColsFromEnd(columns) {
+  deleteColsFromEnd(colDifference) {
+    colDifference = Math.abs(colDifference);
     this.field.map((_, i) => {
-      this.field[i].splice(columns - this.columns);
+      this.field[i].splice(0, colDifference);
     });
   }
 
@@ -307,19 +267,105 @@ class PlaygroundController extends Playground {
     init: 0,
   };
   player = null;
-  #wait = PLAYGROUND_CONFIG_DEFAULTS.wait;
   iter_count = 0;
   editor;
   translator;
   countWorker;
-  constructor(height, width, start = true) {
-    super(height, width);
+  #wait = PLAYGROUND_CONFIG_DEFAULTS.wait;
+  #pixel_size = PLAYGROUND_CONFIG_DEFAULTS.pixel_size;
+
+  constructor(
+    height,
+    width,
+    start = true,
+    pixel_size = PLAYGROUND_CONFIG_DEFAULTS.pixel_size
+  ) {
+    let rows = (height / pixel_size) >> 0;
+    let columns = (width / pixel_size) >> 0;
+    super(rows, columns);
+    this.#pixel_size = pixel_size;
     this.state = this.STATUS.init;
     this.editor = new PlaygroundEditor(this);
     this.translator = new PlaygroundTranslator(this);
     this.initializeControls();
     if (start) {
       this.init();
+    }
+  }
+
+  draw(debug = PLAYGROUND_CONFIG_DEFAULTS.debug) {
+    const process_cell = (cell) => {
+      if (cell.alive) {
+        CTX.fillStyle = PLAYGROUND_CONFIG_DEFAULTS.generation_color(
+          cell.generation
+        );
+        CTX.fillRect(
+          cell.col * this.#pixel_size,
+          cell.row * this.#pixel_size,
+          this.#pixel_size,
+          this.#pixel_size
+        );
+      }
+      if (debug) {
+        CTX.fillStyle = "white";
+        CTX.fillText(
+          this.neighbours(cell).length.toString(),
+          cell.col * this.#pixel_size + this.#pixel_size / 2,
+          cell.row * this.#pixel_size + this.#pixel_size / 2
+        );
+      }
+    };
+    this.apply(process_cell);
+  }
+
+  clearCanvas(show_grid = PLAYGROUND_CONFIG_DEFAULTS.show_grid) {
+    CTX.fillStyle = "black";
+    CTX.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+    CTX.strokeStyle = "#303030";
+    if (show_grid) {
+      CTX.beginPath();
+      for (let i = 0; i < CANVAS_HEIGHT; i += this.#pixel_size) {
+        CTX.moveTo(0, i);
+        CTX.lineTo(CANVAS_WIDTH, i);
+      }
+      for (let i = 0; i < CANVAS_WIDTH; i += this.#pixel_size) {
+        CTX.moveTo(i, 0);
+        CTX.lineTo(i, CANVAS_HEIGHT);
+      }
+      CTX.closePath();
+      CTX.stroke();
+    }
+    CTX.strokeStyle = null;
+  }
+
+  fitToCanvas() {
+    this.resize(
+      (CANVAS_HEIGHT / this.#pixel_size) >> 0,
+      (CANVAS_WIDTH / this.#pixel_size) >> 0
+    );
+  }
+
+  get pixel_size() {
+    return this.#pixel_size;
+  }
+
+  set pixel_size(size) {
+    let current_state = this.state;
+    this.stop(true);
+    this.#pixel_size = size;
+    this.fitToCanvas();
+    this.init();
+    this.resumeState(current_state);
+  }
+
+  resumeState(state) {
+    switch (state) {
+      case this.STATUS.paused:
+        this.pause();
+        break;
+      case this.STATUS.running:
+        this.play();
+        break;
     }
   }
 
@@ -392,6 +438,7 @@ class PlaygroundController extends Playground {
     ).innerText = this.iter_count.toString();
     this.count();
   }
+
   set wait(x) {
     let current = this.state;
     this.stop(true);
@@ -476,7 +523,10 @@ class PlaygroundController extends Playground {
     });
 
     let pixel_slider = document.querySelector("#pixel-slider");
-    pixel_slider.addEventListener("change", () => {});
+    pixel_slider.addEventListener("change", () => {
+      this.pixel_size = pixel_slider.value;
+      document.getElementById("pixel-size").innerText = pixel_slider.value;
+    });
   }
 }
 

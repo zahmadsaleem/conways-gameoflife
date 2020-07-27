@@ -51,7 +51,7 @@ input {
   display: none;
 }
 
-#wait-slider {
+.slider {
   max-width: none;
   flex: auto;
 }

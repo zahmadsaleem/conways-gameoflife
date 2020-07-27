@@ -1,4 +1,3 @@
-const PIXEL_SIZE = 10;
 const CANVAS_WIDTH = window.innerWidth - 20;
 const CANVAS_HEIGHT = window.innerHeight - 20;
 const CANVAS = document.querySelector("#canvas");
@@ -13,6 +12,7 @@ const PLAYGROUND_CONFIG_DEFAULTS = {
   iterations: -1,
   fill_ratio: 0.35,
   show_grid: true,
+  pixel_size: 10,
   generation_color(x) {
     let color;
     switch (true) {
@@ -53,9 +53,10 @@ class Cell {
 class Playground {
   is_wrap_rows = true;
   is_wrap_columns = true;
-  constructor(rows, columns) {
-    this.rows = rows;
-    this.columns = columns;
+  pixel_size = PLAYGROUND_CONFIG_DEFAULTS.pixel_size;
+  constructor(height, width) {
+    this.rows = (height / this.pixel_size) >> 0;
+    this.columns = (width / this.pixel_size) >> 0;
     this.field = this.generate();
     this.initial_state = this.field;
   }
@@ -82,22 +83,42 @@ class Playground {
           cell.generation
         );
         CTX.fillRect(
-          cell.col * PIXEL_SIZE,
-          cell.row * PIXEL_SIZE,
-          PIXEL_SIZE,
-          PIXEL_SIZE
+          cell.col * this.pixel_size,
+          cell.row * this.pixel_size,
+          this.pixel_size,
+          this.pixel_size
         );
       }
       if (debug) {
         CTX.fillStyle = "white";
         CTX.fillText(
           this.neighbours(cell).length.toString(),
-          cell.col * PIXEL_SIZE + PIXEL_SIZE / 2,
-          cell.row * PIXEL_SIZE + PIXEL_SIZE / 2
+          cell.col * this.pixel_size + this.pixel_size / 2,
+          cell.row * this.pixel_size + this.pixel_size / 2
         );
       }
     };
     this.apply(process_cell);
+  }
+
+  clearCanvas(show_grid = PLAYGROUND_CONFIG_DEFAULTS.show_grid) {
+    CTX.fillStyle = "black";
+    CTX.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+    CTX.strokeStyle = "#303030";
+    if (show_grid) {
+      CTX.beginPath();
+      for (let i = 0; i < CANVAS_HEIGHT; i += this.pixel_size) {
+        CTX.moveTo(0, i);
+        CTX.lineTo(CANVAS_WIDTH, i);
+      }
+      for (let i = 0; i < CANVAS_WIDTH; i += this.pixel_size) {
+        CTX.moveTo(i, 0);
+        CTX.lineTo(i, CANVAS_HEIGHT);
+      }
+      CTX.closePath();
+      CTX.stroke();
+    }
+    CTX.strokeStyle = null;
   }
 
   neighbours(cell) {
@@ -220,13 +241,63 @@ class Playground {
     this.field = this.initial_state = this.generate(true);
   }
 
-  // resize(rows, columns) {
-  //   if (rows > this.rows) {
-  //     for (let i = this.rows; i < rows - this.rows; i++) {
-  //       this.field[i] = [];
-  //     }
-  //   }
-  // }
+  resize(rows, columns) {
+    let colDifference = columns - this.columns;
+    let rowDifference = rows - this.rows;
+
+    // add new rows
+    if (rowDifference > 0) {
+      this.addRowsToEnd(rowDifference, columns);
+    }
+
+    // shrink rows
+    if (rowDifference < 0) {
+      this.deleteRowsFromEnd(rowDifference);
+    }
+
+    // extend row
+    if (colDifference > 0) {
+      this.addColsToEnd(colDifference);
+    }
+
+    // shrink row
+    if (colDifference < 0) {
+      this.deleteColsFromEnd(-colDifference);
+    }
+    this.rows = rows;
+    this.columns = columns;
+  }
+
+  addRowsToEnd(rowDifference, columns) {
+    for (let i = this.rows; i < rowDifference; i++) {
+      this.field[i] = this.generateRow(i, columns);
+    }
+  }
+
+  deleteRowsFromEnd(rowDifference) {
+    for (let i = this.rows; i < -rowDifference; i++) {
+      this.field.splice(rowDifference);
+    }
+  }
+
+  addColsToEnd(colDifference) {
+    this.field.map((row, i) => {
+      row.concat(this.generateRow(i, colDifference, this.columns));
+    });
+  }
+
+  deleteColsFromEnd(columns) {
+    this.field.map((_, i) => {
+      this.field[i].splice(columns - this.columns);
+    });
+  }
+
+  generateRow(row_index, num_columns, col_start = 0) {
+    let row = [];
+    for (let i = col_start; i < num_columns; i++)
+      row.push(new Cell(row_index, i));
+    return row;
+  }
 }
 
 class PlaygroundController extends Playground {
@@ -241,8 +312,8 @@ class PlaygroundController extends Playground {
   editor;
   translator;
   countWorker;
-  constructor(rows, cols, start = true) {
-    super(rows, cols);
+  constructor(height, width, start = true) {
+    super(height, width);
     this.state = this.STATUS.init;
     this.editor = new PlaygroundEditor(this);
     this.translator = new PlaygroundTranslator(this);
@@ -253,7 +324,7 @@ class PlaygroundController extends Playground {
   }
 
   init(iterations = PLAYGROUND_CONFIG_DEFAULTS.iterations) {
-    clearCanvas();
+    this.clearCanvas();
     this.draw();
     if (this.player !== null)
       throw Error("initiated without stopping existing player");
@@ -311,7 +382,7 @@ class PlaygroundController extends Playground {
   }
 
   next() {
-    clearCanvas();
+    this.clearCanvas();
     if (this.state === this.STATUS.init) this.state = this.STATUS.paused;
     this.update();
     this.draw();
@@ -403,6 +474,9 @@ class PlaygroundController extends Playground {
       this.is_wrap_rows = is_wrap_row.checked;
       // console.log("wrap columns", is_wrap_col.value );
     });
+
+    let pixel_slider = document.querySelector("#pixel-slider");
+    pixel_slider.addEventListener("change", () => {});
   }
 }
 
@@ -425,12 +499,20 @@ class PlaygroundEditor {
     let [x, y] = this.getMouseRowCol(e.offsetX, e.offsetY);
     CTX.putImageData(this.current_image, 0, 0);
     CTX.strokeStyle = "white";
-    this.drawCrossHair(x + PIXEL_SIZE / 2, y + PIXEL_SIZE / 2);
+    this.drawCrossHair(
+      x + this.controller.pixel_size / 2,
+      y + this.controller.pixel_size / 2
+    );
     this.fillClosestPixel(x, y);
   };
 
   fillClosestPixel(x, y) {
-    CTX.strokeRect(x, y, PIXEL_SIZE, PIXEL_SIZE);
+    CTX.strokeRect(
+      x,
+      y,
+      this.controller.pixel_size,
+      this.controller.pixel_size
+    );
   }
 
   saveCurrentImage() {
@@ -455,15 +537,17 @@ class PlaygroundEditor {
   }
 
   getMouseRowCol(x, y) {
-    x = x - (x % PIXEL_SIZE);
-    y = y - (y % PIXEL_SIZE);
+    x = x - (x % this.controller.pixel_size);
+    y = y - (y % this.controller.pixel_size);
     return [x, y];
   }
 
   changeCell = (e) => {
     if (this.#is_drawing) {
       let [x, y] = this.getMouseRowCol(e.offsetX, e.offsetY);
-      let cell = this.controller.field[y / PIXEL_SIZE][x / PIXEL_SIZE];
+      let cell = this.controller.field[y / this.controller.pixel_size][
+        x / this.controller.pixel_size
+      ];
       if (cell) {
         cell.alive = !cell.alive;
       }
@@ -612,32 +696,8 @@ class PlaygroundTranslator {
   }
 }
 
-function clearCanvas(show_grid = PLAYGROUND_CONFIG_DEFAULTS.show_grid) {
-  CTX.fillStyle = "black";
-  CTX.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
-  CTX.strokeStyle = "#303030";
-  if (show_grid) {
-    CTX.beginPath();
-    for (let i = 0; i < CANVAS_HEIGHT; i += PIXEL_SIZE) {
-      CTX.moveTo(0, i);
-      CTX.lineTo(CANVAS_WIDTH, i);
-    }
-    for (let i = 0; i < CANVAS_WIDTH; i += PIXEL_SIZE) {
-      CTX.moveTo(i, 0);
-      CTX.lineTo(i, CANVAS_HEIGHT);
-    }
-    CTX.closePath();
-    CTX.stroke();
-  }
-  CTX.strokeStyle = null;
-}
-
 function run() {
-  let controller = new PlaygroundController(
-    (CANVAS_HEIGHT / PIXEL_SIZE) >> 0,
-    (CANVAS_WIDTH / PIXEL_SIZE) >> 0,
-    false
-  );
+  let controller = new PlaygroundController(CANVAS_HEIGHT, CANVAS_WIDTH, false);
   controller.translator
     .loadFromURL(
       "https://raw.githubusercontent.com/zahmadsaleem/conways-gameoflife/master/samples/hammer-head-spaceship.txt"

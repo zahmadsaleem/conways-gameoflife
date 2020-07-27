@@ -203,12 +203,12 @@ class Playground {
 
     // add new rows
     if (rowDifference > 0) {
-      this.addRowsToEnd(rowDifference, columns);
+      this.addRowsToEnd(rowDifference);
     }
 
-    // shrink rows
+    // remove rows
     if (rowDifference < 0) {
-      this.deleteRowsFromEnd(rowDifference);
+      this.deleteRowsFromEnd(rows, rowDifference);
     }
 
     // extend row
@@ -218,43 +218,43 @@ class Playground {
 
     // shrink row
     if (colDifference < 0) {
-      this.deleteColsFromEnd(colDifference);
+      this.deleteColsFromEnd(columns, colDifference);
     }
     this.rows = rows;
     this.columns = columns;
     this.initial_state = this.field;
   }
 
-  addRowsToEnd(rowDifference, columns) {
+  addRowsToEnd(rowDifference) {
     for (let i = 0; i < rowDifference; i++) {
       let row_index = this.rows + i;
-      this.field[row_index] = this.generateRow(row_index, columns);
+      this.field[row_index] = this.generateRow(row_index, this.columns);
     }
   }
 
-  deleteRowsFromEnd(rowDifference) {
+  deleteRowsFromEnd(start, rowDifference) {
     rowDifference = Math.abs(rowDifference);
-    for (let i = 0; i < rowDifference; i++) {
-      this.field.splice(0, rowDifference);
-    }
+    this.field.splice(start, rowDifference);
   }
 
   addColsToEnd(colDifference) {
     this.field.map((row, i) => {
-      row.concat(this.generateRow(i, colDifference, this.columns));
+      this.field[i] = row.concat(
+        this.generateRow(i, colDifference, this.columns)
+      );
     });
   }
 
-  deleteColsFromEnd(colDifference) {
+  deleteColsFromEnd(colDifference, start) {
     colDifference = Math.abs(colDifference);
     this.field.map((_, i) => {
-      this.field[i].splice(0, colDifference);
+      this.field[i].splice(start, colDifference);
     });
   }
 
   generateRow(row_index, num_columns, col_start = 0) {
     let row = [];
-    for (let i = col_start; i < num_columns; i++)
+    for (let i = col_start; i < col_start + num_columns; i++)
       row.push(new Cell(row_index, i));
     return row;
   }
@@ -300,18 +300,18 @@ class PlaygroundController extends Playground {
           cell.generation
         );
         CTX.fillRect(
-          cell.col * this.#pixel_size,
-          cell.row * this.#pixel_size,
-          this.#pixel_size,
-          this.#pixel_size
+          cell.col * this.pixel_size,
+          cell.row * this.pixel_size,
+          this.pixel_size,
+          this.pixel_size
         );
       }
       if (debug) {
         CTX.fillStyle = "white";
         CTX.fillText(
           this.neighbours(cell).length.toString(),
-          cell.col * this.#pixel_size + this.#pixel_size / 2,
-          cell.row * this.#pixel_size + this.#pixel_size / 2
+          cell.col * this.pixel_size + this.pixel_size / 2,
+          cell.row * this.pixel_size + this.pixel_size / 2
         );
       }
     };
@@ -321,27 +321,31 @@ class PlaygroundController extends Playground {
   clearCanvas(show_grid = PLAYGROUND_CONFIG_DEFAULTS.show_grid) {
     CTX.fillStyle = "black";
     CTX.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
-    CTX.strokeStyle = "#303030";
     if (show_grid) {
-      CTX.beginPath();
-      for (let i = 0; i < CANVAS_HEIGHT; i += this.#pixel_size) {
-        CTX.moveTo(0, i);
-        CTX.lineTo(CANVAS_WIDTH, i);
-      }
-      for (let i = 0; i < CANVAS_WIDTH; i += this.#pixel_size) {
-        CTX.moveTo(i, 0);
-        CTX.lineTo(i, CANVAS_HEIGHT);
-      }
-      CTX.closePath();
-      CTX.stroke();
+      this.drawGrid();
     }
+  }
+
+  drawGrid() {
+    CTX.strokeStyle = "#303030";
+    CTX.beginPath();
+    for (let i = 0; i < CANVAS_HEIGHT; i += this.pixel_size) {
+      CTX.moveTo(0, i);
+      CTX.lineTo(CANVAS_WIDTH, i);
+    }
+    for (let i = 0; i < CANVAS_WIDTH; i += this.pixel_size) {
+      CTX.moveTo(i, 0);
+      CTX.lineTo(i, CANVAS_HEIGHT);
+    }
+    CTX.closePath();
+    CTX.stroke();
     CTX.strokeStyle = null;
   }
 
   fitToCanvas() {
     this.resize(
-      (CANVAS_HEIGHT / this.#pixel_size) >> 0,
-      (CANVAS_WIDTH / this.#pixel_size) >> 0
+      (CANVAS_HEIGHT / this.pixel_size) >> 0,
+      (CANVAS_WIDTH / this.pixel_size) >> 0
     );
   }
 
@@ -351,7 +355,7 @@ class PlaygroundController extends Playground {
 
   set pixel_size(size) {
     let current_state = this.state;
-    this.stop(true);
+    this.stop();
     this.#pixel_size = size;
     this.fitToCanvas();
     this.init();
@@ -524,7 +528,7 @@ class PlaygroundController extends Playground {
 
     let pixel_slider = document.querySelector("#pixel-slider");
     pixel_slider.addEventListener("change", () => {
-      this.pixel_size = pixel_slider.value;
+      this.pixel_size = +pixel_slider.value;
       document.getElementById("pixel-size").innerText = pixel_slider.value;
     });
   }

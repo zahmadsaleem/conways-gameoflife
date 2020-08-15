@@ -225,36 +225,34 @@ class Playground {
     this.initial_state = this.field;
   }
 
-  addRowsToEnd(rowDifference) {
-    for (let i = 0; i < rowDifference; i++) {
+  addRowsToEnd(count) {
+    for (let i = 0; i < count; i++) {
       let row_index = this.rows + i;
       this.field[row_index] = this.generateRow(row_index, this.columns);
     }
   }
 
-  deleteRowsFromEnd(start, rowDifference) {
-    rowDifference = Math.abs(rowDifference);
-    this.field.splice(start, rowDifference);
+  deleteRowsFromEnd(start, count) {
+    count = Math.abs(count);
+    this.field.splice(start, count);
   }
 
-  addColsToEnd(colDifference) {
+  addColsToEnd(count) {
     this.field.map((row, i) => {
-      this.field[i] = row.concat(
-        this.generateRow(i, colDifference, this.columns)
-      );
+      this.field[i] = row.concat(this.generateRow(i, count, this.columns));
     });
   }
 
-  deleteColsFromEnd(colDifference, start) {
-    colDifference = Math.abs(colDifference);
+  deleteColsFromEnd(count, start) {
+    count = Math.abs(count);
     this.field.map((_, i) => {
-      this.field[i].splice(start, colDifference);
+      this.field[i].splice(start, count);
     });
   }
 
-  generateRow(row_index, num_columns, col_start = 0) {
+  generateRow(row_index, count, start = 0) {
     let row = [];
-    for (let i = col_start; i < col_start + num_columns; i++)
+    for (let i = start; i < start + count; i++)
       row.push(new Cell(row_index, i));
     return row;
   }

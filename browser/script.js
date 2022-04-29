@@ -32,6 +32,78 @@ const PLAYGROUND_CONFIG_DEFAULTS = {
   },
 };
 
+
+const CELL_BYTE_LENGTH = 8;
+
+class Grid {
+  constructor(rows, cols, random = false) {
+    this.rows = rows;
+    this.cols = cols;
+    this.buffer = new ArrayBuffer(rows * cols * CELL_BYTE_LENGTH)
+    for (let row = 0; row < this.rows; row++) {
+      for (let col = 0; col < this.cols; col++) {
+        const cell = this.getCell(row, col)
+        if (random) {
+          randomize(cell)
+        }
+        setCellPosition(cell, row, col)
+      }
+    }
+  }
+
+  getCell(row, col) {
+    return new Uint16Array(this.buffer, (row * this.cols + col) * CELL_BYTE_LENGTH, 4)
+  }
+
+  clone() {
+    const g = new Grid(this.rows, this.cols)
+    g.buffer = this.buffer.slice(0, this.buffer.byteLength);
+    return g
+  }
+
+  population() {
+    return new Uint16Array(this.buffer).filter((m, i) => (i + 2) % 4 === 0 && m > 0).length
+  }
+}
+
+
+function setCellPosition(cell, row, col) {
+  cell[0] = row
+  cell[1] = col
+}
+
+function getCellPosition(cell) {
+  return [cell[0], cell[1]]
+}
+
+function killCell(cell) {
+  cell[2] = 0
+  setCellGeneration(cell, 0)
+}
+
+function reviveCell(cell) {
+  cell[2] = 1
+}
+
+function setCellGeneration(cell, g) {
+  cell[3] = g
+}
+
+function incrementCellGeneration(cell) {
+  cell[3] += 1
+}
+
+function randomize(cell) {
+  const alive = Math.random() < PLAYGROUND_CONFIG_DEFAULTS.fill_ratio ? 1 : 0;
+  if (alive) {
+    reviveCell(cell)
+  }
+}
+
+function isCellAlive(cell) {
+  return cell[2] > 0
+}
+
 class Cell {
   constructor(row, col, alive = false) {
     this.row = row;
@@ -62,30 +134,20 @@ class Playground {
   }
 
   generate(is_random) {
-    let grid = [];
-    for (let row = 0; row < this.rows; row++) {
-      let _row = [];
-      for (let col = 0; col < this.columns; col++) {
-        let alive = is_random
-          ? Math.random() < PLAYGROUND_CONFIG_DEFAULTS.fill_ratio
-          : false;
-        _row.push(new Cell(row, col, alive));
-      }
-      grid.push(_row);
-    }
-    return grid;
+    return new Grid(this.rows, this.columns, is_random);
   }
 
   neighbours(cell) {
     let neighbour_list = [];
     for (let i = -1; i <= 1; i++) {
       for (let j = -1; j <= 1; j++) {
-        let row = cell.row + i;
-        let col = cell.col + j;
+        const [r, c] = getCellPosition(cell)
+        let row = r + i;
+        let col = c + j;
         let neighbor;
         [row, col] = this.getValidIndex(row, col);
         // console.log(`${row},${col}`);
-        if (row != null && col != null) neighbor = this.field[row][col];
+        if (row != null && col != null) neighbor = this.field.getCell(row, col);
         if (neighbor && neighbor !== cell && neighbor.alive)
           neighbour_list.push(neighbor);
       }
@@ -101,8 +163,8 @@ class Playground {
         cell.alive = row[cell.col]
           ? row[cell.col].alive
           : field == null
-          ? this.initial_state[cell.row][cell.col].alive
-          : false;
+            ? this.initial_state[cell.row][cell.col].alive
+            : false;
       } else {
         cell.alive =
           field == null ? this.initial_state[cell.row][cell.col].alive : false;
@@ -456,7 +518,7 @@ class PlaygroundController extends Playground {
 
   count() {
     let _field = this.field;
-    this.countWorker.postMessage({ action: "count-live", field: _field });
+    this.countWorker.postMessage({action: "count-live", field: _field});
   }
 
   updateCountUI(count) {
@@ -536,9 +598,11 @@ class PlaygroundEditor {
   #is_editing = false;
   #is_drawing = false;
   current_image;
+
   constructor(controller) {
     this.controller = controller;
   }
+
   initialize() {
     this.saveCurrentImage();
     CANVAS.addEventListener("mousemove", this.refreshCrossHair);
@@ -598,8 +662,8 @@ class PlaygroundEditor {
     if (this.#is_drawing) {
       let [x, y] = this.getMouseRowCol(e.offsetX, e.offsetY);
       let cell = this.controller.field[y / this.controller.pixel_size][
-        x / this.controller.pixel_size
-      ];
+      x / this.controller.pixel_size
+        ];
       if (cell) {
         cell.alive = !cell.alive;
       }
@@ -652,11 +716,13 @@ class PlaygroundTranslator {
     0: "-",
     1: "0",
   };
+
   constructor(controller) {
     this.controller = controller;
     this.initializeTranslator();
   }
-  parse(content, char_map = { "-": false, "0": true }) {
+
+  parse(content, char_map = {"-": false, "0": true}) {
     let string_rows = content.trim().split("\n");
     let char_grid = string_rows.map((r) => r.trim().split(""));
     if (!char_grid.every((row) => row.length === char_grid[0].length)) {
@@ -678,6 +744,7 @@ class PlaygroundTranslator {
     this.controller.apply(process_cell);
     return grid.map((x) => x.join("")).join("\n");
   }
+
   save() {
     let blob = new Blob([this.stringify()]);
     return URL.createObjectURL(blob);
@@ -757,4 +824,11 @@ function run() {
     .then(() => controller.play());
 }
 
-run();
+// run();
+
+function testArrayBufferGrid() {
+  const g = new Grid(10, 10, true);
+  console.log(g, g.getCell(5, 7))
+}
+
+testArrayBufferGrid();

@@ -32,7 +32,6 @@ const PLAYGROUND_CONFIG_DEFAULTS = {
   },
 };
 
-
 const CELL_BYTE_LENGTH = 8;
 
 class Grid {
@@ -105,7 +104,7 @@ function setCellGeneration(cell, g) {
   cell[3] = g
 }
 
-function getGeneration(cell){
+function getGeneration(cell) {
   return cell[3]
 }
 
@@ -132,6 +131,30 @@ function randomize(cell) {
   }
 }
 
+function drawCell(cell, neighbor_count, pixelSize) {
+  const debug = PLAYGROUND_CONFIG_DEFAULTS.debug
+
+  if (isCellAlive(cell)) {
+    CTX.fillStyle = PLAYGROUND_CONFIG_DEFAULTS.generation_color(
+      getGeneration(cell)
+    );
+    CTX.fillRect(
+      cell[1] * pixelSize,
+      cell[0] * pixelSize,
+      pixelSize,
+      pixelSize
+    );
+  }
+  if (debug) {
+    CTX.fillStyle = "white";
+    CTX.fillText(
+      neighbor_count.toString(),
+      cell[1] * pixelSize + pixelSize / 2,
+      cell[0] * pixelSize + pixelSize / 2
+    );
+  }
+}
+
 class Playground {
   is_wrap_rows = true;
   is_wrap_columns = true;
@@ -149,12 +172,12 @@ class Playground {
 
   neighbours(cell, grid) {
     let neighbour_list = [];
+    const [r, c] = getCellPosition(cell)
     for (let i = -1; i <= 1; i++) {
       for (let j = -1; j <= 1; j++) {
         if (i === 0 && j === 0) {
           continue
         }
-        const [r, c] = getCellPosition(cell)
         let row = r + i;
         let col = c + j;
         let neighbor;
@@ -180,9 +203,9 @@ class Playground {
     this.field = this.initial_state.clone();
   }
 
-  update() {
+  update(draw) {
     const currentGrid = this.field.clone();
-    const process_cell = (cell) => {
+    const f = (cell) => {
       let length = this.neighbours(cell, currentGrid).length;
       if (isCellAlive(cell)) {
         if (length > 3 || length < 2) {
@@ -195,8 +218,9 @@ class Playground {
           reviveCell(cell);
         }
       }
+      draw(cell, length)
     };
-    this.applyToCells(process_cell, this.field);
+    this.applyToCells(f, this.field);
   }
 
   applyToCells(processCell, grid) {
@@ -209,10 +233,6 @@ class Playground {
     // DRY code for looping through field
   }
 
-  isValidCell(row, col) {
-    return this.isValidColumn(col) && this.isValidRow(row);
-  }
-
   isValidColumn(col) {
     return col >= 0 && col < this.columns;
   }
@@ -222,34 +242,38 @@ class Playground {
   }
 
   getValidIndex(row, col) {
-    if (!this.isValidCell(row, col)) {
-      // not a valid row
-      if (!this.isValidRow(row)) {
-        // wrap ?
-        if (this.is_wrap_rows) {
-          // check conditions to wrap
-          if (row === this.rows) row = 0;
-          else if (row === -1) row = this.rows - 1;
-          //  doesnt match ? (this condition is never met in neighbours)
-          else row = null;
-        } else {
-          // dont wrap and invalid
-          row = null;
-        }
-      } else {
-        // row is fine
-      }
+    const isValidRow = this.isValidRow(row);
+    const isValidCol = this.isValidColumn(col)
+    const isValidCell = isValidRow && isValidCol
 
-      if (!this.isValidColumn(col)) {
-        if (this.is_wrap_columns) {
-          if (col === this.columns) col = 0;
-          else if (col === -1) col = this.columns - 1;
-          else col = null;
-        } else {
-          col = null;
-        }
+    if (isValidCell) {
+      return [row, col]
+    }
+
+    if (!isValidRow) {
+      // wrap ?
+      if (this.is_wrap_rows) {
+        // check conditions to wrap
+        if (row === this.rows) row = 0;
+        else if (row === -1) row = this.rows - 1;
+        //  doesnt match ? (this condition is never met in neighbours)
+        else row = null;
+      } else {
+        // dont wrap and invalid
+        row = null;
       }
     }
+
+    if (!isValidCol) {
+      if (this.is_wrap_columns) {
+        if (col === this.columns) col = 0;
+        else if (col === -1) col = this.columns - 1;
+        else col = null;
+      } else {
+        col = null;
+      }
+    }
+
     return [row, col];
   }
 
@@ -269,7 +293,7 @@ class Playground {
     this.field = g;
     this.rows = rows;
     this.columns = columns;
-    this.initial_state = this.field;
+    this.initial_state = this.field.clone();
   }
 }
 
@@ -303,32 +327,6 @@ class PlaygroundController extends Playground {
     if (start) {
       this.init();
     }
-  }
-
-  draw(debug = PLAYGROUND_CONFIG_DEFAULTS.debug) {
-    const currentGrid = this.field.clone()
-    const process_cell = (cell) => {
-      if (isCellAlive(cell)) {
-        CTX.fillStyle = PLAYGROUND_CONFIG_DEFAULTS.generation_color(
-          getGeneration(cell)
-        );
-        CTX.fillRect(
-          cell[1] * this.pixel_size,
-          cell[0] * this.pixel_size,
-          this.pixel_size,
-          this.pixel_size
-        );
-      }
-      if (debug) {
-        CTX.fillStyle = "white";
-        CTX.fillText(
-          this.neighbours(cell, currentGrid).length.toString(),
-          cell[1] * this.pixel_size + this.pixel_size / 2,
-          cell[0] * this.pixel_size + this.pixel_size / 2
-        );
-      }
-    };
-    this.applyToCells(process_cell, this.field);
   }
 
   clearCanvas(show_grid = PLAYGROUND_CONFIG_DEFAULTS.show_grid) {
@@ -388,7 +386,7 @@ class PlaygroundController extends Playground {
 
   init(iterations = PLAYGROUND_CONFIG_DEFAULTS.iterations) {
     this.clearCanvas();
-    this.draw();
+    this.applyToCells((c, n) => drawCell(c, n, this.pixel_size), this.field);
     if (this.player !== null)
       throw Error("initiated without stopping existing player");
     this.player = setInterval(() => {
@@ -447,8 +445,7 @@ class PlaygroundController extends Playground {
   next() {
     this.clearCanvas();
     if (this.state === this.STATUS.init) this.state = this.STATUS.paused;
-    this.update();
-    this.draw();
+    this.update((c, n) => drawCell(c, n, this.pixel_size));
     this.iter_count++;
     document.getElementById(
       "iteration-number"
@@ -692,11 +689,12 @@ class PlaygroundTranslator {
 
   stringify() {
     let grid = [];
-    const process_cell = (cell) => {
-      grid[cell.row] = grid[cell.row] || [];
-      grid[cell.row].push(this.chars[Number(cell.alive)]);
+    const f = (cell) => {
+      const [row, col] = getCellPosition(cell)
+      grid[row] = grid[row] || [];
+      grid[row][col] = this.chars[Number(isCellAlive(cell))];
     };
-    this.controller.applyToCells(process_cell);
+    this.controller.applyToCells(f, this.controller.field);
     return grid.map((x) => x.join("")).join("\n");
   }
 
@@ -780,10 +778,3 @@ function run() {
 }
 
 run();
-
-function testArrayBufferGrid() {
-  const g = new Grid(10, 10, true);
-  console.log(g, g.getCell(5, 7))
-}
-
-// testArrayBufferGrid();

@@ -39,7 +39,8 @@ class Grid {
   constructor(rows, cols, random = false) {
     this.rows = rows;
     this.cols = cols;
-    this.buffer = new ArrayBuffer(rows * cols * CELL_BYTE_LENGTH)
+    this.buffer = new ArrayBuffer(rows * cols * CELL_BYTE_LENGTH);
+    this.u = new Uint16Array(this.buffer);
     for (let row = 0; row < this.rows; row++) {
       for (let col = 0; col < this.cols; col++) {
         const cell = this.getCell(row, col)
@@ -62,7 +63,18 @@ class Grid {
   }
 
   population() {
-    return new Uint16Array(this.buffer).filter((m, i) => (i + 2) % 4 === 0 && m > 0).length
+    return this.u.filter((m, i) => (i + 2) % 4 === 0 && m > 0).length
+  }
+
+  copyFromGrid(grid) {
+    const rows = Math.min(grid.rows, this.rows)
+    const cols = Math.min(grid.cols, this.cols)
+    for (let row = 0; row < rows; row++) {
+      for (let col = 0; col < cols; col++) {
+        const cell = this.getCell(row, col)
+        copyCell(grid.getCell(row, col), cell)
+      }
+    }
   }
 }
 
@@ -74,6 +86,10 @@ function setCellPosition(cell, row, col) {
 
 function getCellPosition(cell) {
   return [cell[0], cell[1]]
+}
+
+function isCellAlive(cell) {
+  return cell[2] > 0
 }
 
 function killCell(cell) {
@@ -89,36 +105,30 @@ function setCellGeneration(cell, g) {
   cell[3] = g
 }
 
+function getGeneration(cell){
+  return cell[3]
+}
+
 function incrementCellGeneration(cell) {
   cell[3] += 1
+}
+
+function copyCell(from, to) {
+  to[2] = from[2]
+}
+
+function toggleLife(cell) {
+  if (isCellAlive(cell)) {
+    killCell(cell)
+    return
+  }
+  reviveCell(cell)
 }
 
 function randomize(cell) {
   const alive = Math.random() < PLAYGROUND_CONFIG_DEFAULTS.fill_ratio ? 1 : 0;
   if (alive) {
     reviveCell(cell)
-  }
-}
-
-function isCellAlive(cell) {
-  return cell[2] > 0
-}
-
-class Cell {
-  constructor(row, col, alive = false) {
-    this.row = row;
-    this.col = col;
-    this.alive = alive;
-    this.generation = 0;
-  }
-
-  die() {
-    this.alive = false;
-    this.generation = 0;
-  }
-
-  live() {
-    this.alive = true;
   }
 }
 
@@ -130,81 +140,73 @@ class Playground {
     this.rows = rows;
     this.columns = columns;
     this.field = this.generate();
-    this.initial_state = this.field;
+    this.initial_state = this.field.clone();
   }
 
   generate(is_random) {
     return new Grid(this.rows, this.columns, is_random);
   }
 
-  neighbours(cell) {
+  neighbours(cell, grid) {
     let neighbour_list = [];
     for (let i = -1; i <= 1; i++) {
       for (let j = -1; j <= 1; j++) {
+        if (i === 0 && j === 0) {
+          continue
+        }
         const [r, c] = getCellPosition(cell)
         let row = r + i;
         let col = c + j;
         let neighbor;
         [row, col] = this.getValidIndex(row, col);
         // console.log(`${row},${col}`);
-        if (row != null && col != null) neighbor = this.field.getCell(row, col);
-        if (neighbor && neighbor !== cell && neighbor.alive)
+        if (row != null && col != null) {
+          neighbor = grid.getCell(row, col);
+        }
+        if (neighbor && isCellAlive(neighbor)) {
           neighbour_list.push(neighbor);
+        }
       }
     }
     return neighbour_list;
   }
 
   restoreInitialField(field = null) {
-    const process_cell = (cell) => {
-      let grid = field ? field : this.initial_state;
-      let row = grid[cell.row] || this.initial_state[cell.row];
-      if (grid[cell.row]) {
-        cell.alive = row[cell.col]
-          ? row[cell.col].alive
-          : field == null
-            ? this.initial_state[cell.row][cell.col].alive
-            : false;
-      } else {
-        cell.alive =
-          field == null ? this.initial_state[cell.row][cell.col].alive : false;
-      }
-
-      cell.generation = 0;
-    };
-    this.apply(process_cell);
-    this.initial_state = this.field;
+    if (field) {
+      this.field.copyFromGrid(field);
+      this.initial_state.copyFromGrid(field);
+      return
+    }
+    this.field = this.initial_state.clone();
   }
 
   update() {
-    let grid = [];
+    const currentGrid = this.field.clone();
     const process_cell = (cell) => {
-      // new generated cell from grid
-      let new_cell = new Cell(cell.row, cell.col, cell.alive);
-      // copy state and generation
-      new_cell.generation = cell.generation;
-      // check neighbors of old cell
-      let length = this.neighbours(cell).length;
-      if (cell.alive) {
-        if (length > 3 || length < 2) new_cell.die();
-        else new_cell.generation++;
+      let length = this.neighbours(cell, currentGrid).length;
+      if (isCellAlive(cell)) {
+        if (length > 3 || length < 2) {
+          killCell(cell);
+        } else {
+          incrementCellGeneration(cell);
+        }
       } else {
-        if (length === 3) new_cell.live();
+        if (length === 3) {
+          reviveCell(cell);
+        }
       }
-      grid[cell.row] = grid[cell.row] || [];
-      grid[cell.row][cell.col] = new_cell;
     };
-    this.apply(process_cell);
-    this.field = grid;
+    this.applyToCells(process_cell, this.field);
   }
 
-  apply(processCell) {
-    // DRY code for looping through field
-    for (let cell_row of this.field) {
-      for (let cell of cell_row) {
+  applyToCells(processCell, grid) {
+    for (let row = 0; row < this.rows; row++) {
+      for (let col = 0; col < this.columns; col++) {
+        const cell = grid.getCell(row, col)
         processCell(cell);
       }
     }
+    // DRY code for looping through field
   }
 
   isValidCell(row, col) {
@@ -220,7 +222,7 @@ class Playground {
   }
 
   getValidIndex(row, col) {
-    if (!this.isValidCell(row.col)) {
+    if (!this.isValidCell(row, col)) {
       // not a valid row
       if (!this.isValidRow(row)) {
         // wrap ?
@@ -252,71 +254,22 @@ class Playground {
   }
 
   killAllCells() {
-    this.field = this.initial_state = this.generate(false);
+    this.field = this.generate(false);
+    this.initial_state = this.field.clone();
   }
 
   randomizeField() {
-    this.field = this.initial_state = this.generate(true);
+    this.field = this.generate(true);
+    this.initial_state = this.field.clone();
   }
 
   resize(rows, columns) {
-    let colDifference = columns - this.columns;
-    let rowDifference = rows - this.rows;
-
-    // add new rows
-    if (rowDifference > 0) {
-      this.addRowsToEnd(rowDifference);
-    }
-
-    // remove rows
-    if (rowDifference < 0) {
-      this.deleteRowsFromEnd(rows, rowDifference);
-    }
-
-    // extend row
-    if (colDifference > 0) {
-      this.addColsToEnd(colDifference);
-    }
-
-    // shrink row
-    if (colDifference < 0) {
-      this.deleteColsFromEnd(columns, colDifference);
-    }
+    const g = new Grid(rows, columns);
+    g.copyFromGrid(this.field);
+    this.field = g;
     this.rows = rows;
     this.columns = columns;
     this.initial_state = this.field;
-  }
-
-  addRowsToEnd(count) {
-    for (let i = 0; i < count; i++) {
-      let row_index = this.rows + i;
-      this.field[row_index] = this.generateRow(row_index, this.columns);
-    }
-  }
-
-  deleteRowsFromEnd(start, count) {
-    count = Math.abs(count);
-    this.field.splice(start, count);
-  }
-
-  addColsToEnd(count) {
-    this.field.map((row, i) => {
-      this.field[i] = row.concat(this.generateRow(i, count, this.columns));
-    });
-  }
-
-  deleteColsFromEnd(count, start) {
-    count = Math.abs(count);
-    this.field.map((_, i) => {
-      this.field[i].splice(start, count);
-    });
-  }
-
-  generateRow(row_index, count, start = 0) {
-    let row = [];
-    for (let i = start; i < start + count; i++)
-      row.push(new Cell(row_index, i));
-    return row;
   }
 }
 
@@ -330,7 +283,6 @@ class PlaygroundController extends Playground {
   iter_count = 0;
   editor;
   translator;
-  countWorker;
   #wait = PLAYGROUND_CONFIG_DEFAULTS.wait;
   #pixel_size = PLAYGROUND_CONFIG_DEFAULTS.pixel_size;
 
@@ -354,14 +306,15 @@ class PlaygroundController extends Playground {
   }
 
   draw(debug = PLAYGROUND_CONFIG_DEFAULTS.debug) {
+    const currentGrid = this.field.clone()
     const process_cell = (cell) => {
-      if (cell.alive) {
+      if (isCellAlive(cell)) {
         CTX.fillStyle = PLAYGROUND_CONFIG_DEFAULTS.generation_color(
-          cell.generation
+          getGeneration(cell)
         );
         CTX.fillRect(
-          cell.col * this.pixel_size,
-          cell.row * this.pixel_size,
+          cell[1] * this.pixel_size,
+          cell[0] * this.pixel_size,
           this.pixel_size,
           this.pixel_size
         );
@@ -369,13 +322,13 @@ class PlaygroundController extends Playground {
       if (debug) {
         CTX.fillStyle = "white";
         CTX.fillText(
-          this.neighbours(cell).length.toString(),
-          cell.col * this.pixel_size + this.pixel_size / 2,
-          cell.row * this.pixel_size + this.pixel_size / 2
+          this.neighbours(cell, currentGrid).length.toString(),
+          cell[1] * this.pixel_size + this.pixel_size / 2,
+          cell[0] * this.pixel_size + this.pixel_size / 2
         );
       }
     };
-    this.apply(process_cell);
+    this.applyToCells(process_cell, this.field);
   }
 
   clearCanvas(show_grid = PLAYGROUND_CONFIG_DEFAULTS.show_grid) {
@@ -447,7 +400,7 @@ class PlaygroundController extends Playground {
       if (iterations === 0) clearInterval(this.player);
     }, this.#wait);
     document.getElementById("pause-play").innerHTML = "start";
-    this.count();
+    this.updateCountUI();
   }
 
   pause() {
@@ -500,7 +453,7 @@ class PlaygroundController extends Playground {
     document.getElementById(
       "iteration-number"
     ).innerText = this.iter_count.toString();
-    this.count();
+    this.updateCountUI();
   }
 
   set wait(x) {
@@ -516,18 +469,11 @@ class PlaygroundController extends Playground {
     ids.map((id) => (document.getElementById(id).disabled = is_disable));
   }
 
-  count() {
-    let _field = this.field;
-    this.countWorker.postMessage({action: "count-live", field: _field});
-  }
-
-  updateCountUI(count) {
-    document.getElementById("live-count").innerHTML = count.toString();
+  updateCountUI() {
+    document.getElementById("live-count").innerHTML = this.field.population();
   }
 
   initializeControls() {
-    this.countWorker = new Worker("worker.js");
-    this.countWorker.onmessage = (e) => this.updateCountUI(e.data);
     let toggle_btn = document.getElementById("toggle-controls");
     toggle_btn.addEventListener("click", () => {
       document.getElementById("controls").classList.toggle("collapse");
@@ -661,11 +607,12 @@ class PlaygroundEditor {
   changeCell = (e) => {
     if (this.#is_drawing) {
       let [x, y] = this.getMouseRowCol(e.offsetX, e.offsetY);
-      let cell = this.controller.field[y / this.controller.pixel_size][
-      x / this.controller.pixel_size
-        ];
+      let cell = this.controller.field.getCell(
+        y / this.controller.pixel_size,
+        x / this.controller.pixel_size
+      );
       if (cell) {
-        cell.alive = !cell.alive;
+        toggleLife(cell);
       }
 
       this.controller.restart(true);
@@ -728,11 +675,19 @@ class PlaygroundTranslator {
     if (!char_grid.every((row) => row.length === char_grid[0].length)) {
       return null;
     }
-    return char_grid.map((row, row_index) =>
-      row.map(
-        (char, col_index) => new Cell(row_index, col_index, char_map[char])
+    const grid = new Grid(string_rows.length, char_grid[0].length)
+    char_grid.forEach((row, row_index) =>
+      row.forEach(
+        (char, col_index) => {
+          const cell = grid.getCell(row_index, col_index)
+          if (char_map[char]) {
+            reviveCell(cell)
+          }
+        }
       )
     );
+
+    return grid;
   }
 
   stringify() {
@@ -741,7 +696,7 @@ class PlaygroundTranslator {
       grid[cell.row] = grid[cell.row] || [];
       grid[cell.row].push(this.chars[Number(cell.alive)]);
     };
-    this.controller.apply(process_cell);
+    this.controller.applyToCells(process_cell);
     return grid.map((x) => x.join("")).join("\n");
   }
 
@@ -824,11 +779,11 @@ function run() {
     .then(() => controller.play());
 }
 
-// run();
+run();
 
 function testArrayBufferGrid() {
   const g = new Grid(10, 10, true);
   console.log(g, g.getCell(5, 7))
 }
 
-testArrayBufferGrid();
+// testArrayBufferGrid();

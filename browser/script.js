@@ -32,43 +32,41 @@ const PLAYGROUND_CONFIG_DEFAULTS = {
   },
 };
 
-const CELL_BYTE_LENGTH = 8;
-
 class Grid {
   constructor(rows, cols, random = false) {
     this.rows = rows;
     this.cols = cols;
-    this.buffer = new ArrayBuffer(rows * cols * CELL_BYTE_LENGTH);
-    this.u = new Uint16Array(this.buffer);
+    this.buffer = new Uint8Array(new ArrayBuffer(rows * cols ));
+    this.generations = new Uint16Array(new ArrayBuffer(rows * cols * 2))
     for (let row = 0; row < this.rows; row++) {
       for (let col = 0; col < this.cols; col++) {
-        const cell = this.getCell(row, col)
         if (random) {
-          randomize(cell)
+          this.randomize(row, col)
         }
-        setCellPosition(cell, row, col)
       }
     }
   }
 
-  getCell(row, col) {
-    return new Uint16Array(this.buffer, (row * this.cols + col) * CELL_BYTE_LENGTH, 4)
+  getCellLife(row, col) {
+    return this.buffer[this.getCellLifeIndex(row, col)]
   }
 
-  getCellLife(row,col){
-    const i = (row * this.cols + col)*4 + 2
-    return this.u[i]
+  getCellLifeIndex(row, col) {
+    return (row * this.cols + col)
+  }
+
+  getCellGeneration(row, col) {
+    return this.generations[this.getCellLifeIndex(row, col) + 1]
   }
 
   clone() {
     const g = new Grid(this.rows, this.cols)
-    g.buffer = this.buffer.slice(0, this.buffer.byteLength);
-    g.u = new Uint16Array(g.buffer)
+    g.buffer = new Uint16Array(this.buffer.slice(0, this.buffer.byteLength));
     return g
   }
 
   population() {
-    return this.u.filter((m, i) => (i + 2) % 4 === 0 && m > 0).length
+    return this.buffer.reduce((acc, item) => acc + item, 0)
   }
 
   copyFromGrid(grid) {
@@ -76,87 +74,73 @@ class Grid {
     const cols = Math.min(grid.cols, this.cols)
     for (let row = 0; row < rows; row++) {
       for (let col = 0; col < cols; col++) {
-        const cell = this.getCell(row, col)
-        copyCell(grid.getCell(row, col), cell)
+        this.copyCell(grid, row, col)
       }
     }
   }
-}
 
-
-function setCellPosition(cell, row, col) {
-  cell[0] = row
-  cell[1] = col
-}
-
-function getCellPosition(cell) {
-  return [cell[0], cell[1]]
-}
-
-function isCellAlive(cell) {
-  return cell[2] > 0
-}
-
-function killCell(cell) {
-  cell[2] = 0
-  setCellGeneration(cell, 0)
-}
-
-function reviveCell(cell) {
-  cell[2] = 1
-}
-
-function setCellGeneration(cell, g) {
-  cell[3] = g
-}
-
-function getGeneration(cell) {
-  return cell[3]
-}
-
-function incrementCellGeneration(cell) {
-  cell[3] += 1
-}
-
-function copyCell(from, to) {
-  to[2] = from[2]
-}
-
-function toggleLife(cell) {
-  if (isCellAlive(cell)) {
-    killCell(cell)
-    return
+  isAlive(row, col) {
+    return this.getCellLife(row, col) === 1
   }
-  reviveCell(cell)
-}
 
-function randomize(cell) {
-  const alive = Math.random() < PLAYGROUND_CONFIG_DEFAULTS.fill_ratio ? 1 : 0;
-  if (alive) {
-    reviveCell(cell)
+  killCell(row, col) {
+    const i = this.getCellLifeIndex(row, col)
+    this.buffer[i] = 0
+    this.generations[i] = 0
   }
+
+  reviveCell(row, col) {
+    this.buffer[this.getCellLifeIndex(row, col)] = 1
+  }
+
+  incrementCellGeneration(row, col) {
+    const i = this.getCellLifeIndex(row, col)
+    this.generations[i]++
+  }
+
+  toggleLife(row, col) {
+    if (this.isAlive(row, col)) {
+      this.killCell(row, col)
+      return
+    }
+    this.reviveCell(row, col)
+  }
+
+  randomize(row, col) {
+    const alive = Math.random() < PLAYGROUND_CONFIG_DEFAULTS.fill_ratio ? 1 : 0;
+    if (alive) {
+      this.reviveCell(row, col)
+    }
+  }
+
+  copyCell(from, row, col) {
+    this.buffer[this.getCellLifeIndex(row, col)] = from.getCellLife(row, col)
+    this.generations[this.getCellLifeIndex(row, col)] = 0;
+  }
+
 }
 
-function drawCell(cell, neighbor_count, pixelSize) {
+
+function drawCell(row, col, grid, neighbor_count, pixelSize) {
   const debug = PLAYGROUND_CONFIG_DEFAULTS.debug
 
-  if (isCellAlive(cell)) {
+  if (grid.isAlive(row, col)) {
     CTX.fillStyle = PLAYGROUND_CONFIG_DEFAULTS.generation_color(
-      getGeneration(cell)
+      grid.getCellGeneration(row, col)
     );
     CTX.fillRect(
-      cell[1] * pixelSize,
-      cell[0] * pixelSize,
+      col * pixelSize,
+      row * pixelSize,
       pixelSize,
       pixelSize
     );
   }
-  if (debug && neighbor_count!== undefined) {
+  if (debug && neighbor_count !== undefined) {
     CTX.fillStyle = "white";
     CTX.fillText(
       neighbor_count.toString(),
-      cell[1] * pixelSize + pixelSize / 2,
-      cell[0] * pixelSize + pixelSize / 2
+      col * pixelSize + pixelSize / 2,
+      row * pixelSize + pixelSize / 2
     );
   }
 }
@@ -176,9 +160,8 @@ class Playground {
     return new Grid(this.rows, this.columns, is_random);
   }
 
-  neighbours(cell, grid) {
+  neighbours(r, c, grid) {
     let neighbours = 0;
-    const [r, c] = getCellPosition(cell)
     for (let i = -1; i <= 1; i++) {
       for (let j = -1; j <= 1; j++) {
         if (i === 0 && j === 0) {
@@ -198,41 +181,37 @@ class Playground {
 
   restoreInitialField(field = null) {
     if (field) {
-      this.field.copyFromGrid(field);
       this.initial_state.copyFromGrid(field);
-      return
     }
     this.field = this.initial_state.clone();
   }
 
   update(draw) {
     const currentGrid = this.field.clone();
-    const f = (cell) => {
-      let length = this.neighbours(cell, currentGrid);
-      if (isCellAlive(cell)) {
+    const f = (row, col) => {
+      let length = this.neighbours(row, col, currentGrid);
+      if (currentGrid.isAlive(row, col)) {
         if (length > 3 || length < 2) {
-          killCell(cell);
+          this.field.killCell(row, col);
         } else {
-          incrementCellGeneration(cell);
+          this.field.incrementCellGeneration(row, col);
         }
       } else {
         if (length === 3) {
-          reviveCell(cell);
+          this.field.reviveCell(row, col);
         }
       }
-      draw(cell, length)
+      draw(row, col, length)
     };
-    this.applyToCells(f, this.field);
+    this.applyToCells(f);
   }
 
-  applyToCells(processCell, grid) {
+  applyToCells(processCell) {
     for (let row = 0; row < this.rows; row++) {
       for (let col = 0; col < this.columns; col++) {
-        const cell = grid.getCell(row, col)
-        processCell(cell);
+        processCell(row, col);
       }
     }
-    // DRY code for looping through field
   }
 
   isValidColumn(col) {
@@ -388,7 +367,7 @@ class PlaygroundController extends Playground {
 
   init(iterations = PLAYGROUND_CONFIG_DEFAULTS.iterations) {
     this.clearCanvas();
-    this.applyToCells((c, n) => drawCell(c, n, this.pixel_size), this.field);
+    this.applyToCells((r, c, n) => drawCell(r, c, this.field, n, this.pixel_size));
     if (this.player !== null)
       throw Error("initiated without stopping existing player");
     this.player = setInterval(() => {
@@ -448,7 +427,7 @@ class PlaygroundController extends Playground {
     // const t0 = performance.now()
     this.clearCanvas();
     if (this.state === this.STATUS.init) this.state = this.STATUS.paused;
-    this.update((c, n) => drawCell(c, n, this.pixel_size));
+    this.update((r, c, n) => drawCell(r, c, this.field, n, this.pixel_size));
     this.iter_count++;
     document.getElementById(
       "iteration-number"
@@ -608,12 +587,12 @@ class PlaygroundEditor {
   changeCell = (e) => {
     if (this.#is_drawing) {
       let [x, y] = this.getMouseRowCol(e.offsetX, e.offsetY);
-      let cell = this.controller.field.getCell(
+      let [row, col] = [
         y / this.controller.pixel_size,
         x / this.controller.pixel_size
-      );
-      if (cell) {
-        toggleLife(cell);
+      ];
+      if (this.controller.isValidRow(row) && this.controller.isValidColumn(col)) {
+        this.controller.field.toggleLife(row, col);
       }
 
       this.controller.restart(true);
@@ -680,25 +659,24 @@ class PlaygroundTranslator {
     char_grid.forEach((row, row_index) =>
       row.forEach(
         (char, col_index) => {
-          const cell = grid.getCell(row_index, col_index)
           if (char_map[char]) {
-            reviveCell(cell)
+            // console.log(row_index,col_index)
+            grid.reviveCell(row_index, col_index)
           }
         }
       )
     );
-
+    console.log(grid,grid.population())
     return grid;
   }
 
   stringify() {
     let grid = [];
-    const f = (cell) => {
-      const [row, col] = getCellPosition(cell)
+    const f = (row, col) => {
       grid[row] = grid[row] || [];
-      grid[row][col] = this.chars[Number(isCellAlive(cell))];
+      grid[row][col] = this.chars[Number(this.controller.field.isAlive(row, col))];
     };
-    this.controller.applyToCells(f, this.controller.field);
+    this.controller.applyToCells(f);
     return grid.map((x) => x.join("")).join("\n");
   }
 

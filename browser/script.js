@@ -55,9 +55,15 @@ class Grid {
     return new Uint16Array(this.buffer, (row * this.cols + col) * CELL_BYTE_LENGTH, 4)
   }
 
+  getCellLife(row,col){
+    const i = (row * this.cols + col)*4 + 2
+    return this.u[i]
+  }
+
   clone() {
     const g = new Grid(this.rows, this.cols)
     g.buffer = this.buffer.slice(0, this.buffer.byteLength);
+    g.u = new Uint16Array(g.buffer)
     return g
   }
 
@@ -145,7 +151,7 @@ function drawCell(cell, neighbor_count, pixelSize) {
       pixelSize
     );
   }
-  if (debug) {
+  if (debug && neighbor_count!== undefined) {
     CTX.fillStyle = "white";
     CTX.fillText(
       neighbor_count.toString(),
@@ -171,7 +177,7 @@ class Playground {
   }
 
   neighbours(cell, grid) {
-    let neighbour_list = [];
+    let neighbours = 0;
     const [r, c] = getCellPosition(cell)
     for (let i = -1; i <= 1; i++) {
       for (let j = -1; j <= 1; j++) {
@@ -180,18 +186,14 @@ class Playground {
         }
         let row = r + i;
         let col = c + j;
-        let neighbor;
         [row, col] = this.getValidIndex(row, col);
-        // console.log(`${row},${col}`);
-        if (row != null && col != null) {
-          neighbor = grid.getCell(row, col);
-        }
-        if (neighbor && isCellAlive(neighbor)) {
-          neighbour_list.push(neighbor);
+        if (row !== null && col !== null) {
+          const l = grid.getCellLife(row, col);
+          neighbours += l
         }
       }
     }
-    return neighbour_list;
+    return neighbours;
   }
 
   restoreInitialField(field = null) {
@@ -206,7 +208,7 @@ class Playground {
   update(draw) {
     const currentGrid = this.field.clone();
     const f = (cell) => {
-      let length = this.neighbours(cell, currentGrid).length;
+      let length = this.neighbours(cell, currentGrid);
       if (isCellAlive(cell)) {
         if (length > 3 || length < 2) {
           killCell(cell);
@@ -443,6 +445,7 @@ class PlaygroundController extends Playground {
   }
 
   next() {
+    const t0 = performance.now()
     this.clearCanvas();
     if (this.state === this.STATUS.init) this.state = this.STATUS.paused;
     this.update((c, n) => drawCell(c, n, this.pixel_size));
@@ -451,6 +454,7 @@ class PlaygroundController extends Playground {
       "iteration-number"
     ).innerText = this.iter_count.toString();
     this.updateCountUI();
+    console.log(performance.now() - t0)
   }
 
   set wait(x) {

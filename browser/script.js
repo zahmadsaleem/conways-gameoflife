@@ -445,7 +445,7 @@ class PlaygroundController extends Playground {
   }
 
   next() {
-    const t0 = performance.now()
+    // const t0 = performance.now()
     this.clearCanvas();
     if (this.state === this.STATUS.init) this.state = this.STATUS.paused;
     this.update((c, n) => drawCell(c, n, this.pixel_size));
@@ -454,7 +454,7 @@ class PlaygroundController extends Playground {
       "iteration-number"
     ).innerText = this.iter_count.toString();
     this.updateCountUI();
-    console.log(performance.now() - t0)
+    // console.log(performance.now() - t0)
   }
 
   set wait(x) {

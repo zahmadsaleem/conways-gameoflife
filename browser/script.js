@@ -7,7 +7,7 @@ const CTX = CANVAS.getContext("2d");
 
 const PLAYGROUND_CONFIG_DEFAULTS = {
   debug: false,
-  wait: 10,
+  wait: 50,
   // infinite
   iterations: -1,
   fill_ratio: 0.35,
@@ -370,14 +370,26 @@ class PlaygroundController extends Playground {
     this.applyToCells((r, c, n) => drawCell(r, c, this.field, n, this.pixel_size));
     if (this.player !== null)
       throw Error("initiated without stopping existing player");
-    this.player = setInterval(() => {
+    let lastUpdated = 0;
+    let delay = this.#wait
+    const iter = () => {
       if (this.state === this.STATUS.running) {
-        this.next();
-        iterations--;
+        const now = performance.now()
+        if( now - lastUpdated > delay){
+          this.next();
+          iterations--;
+          // console.log(delay, now -lastUpdated)
+          lastUpdated = now;
+        }
       }
       // status turns to init on reset
-      if (iterations === 0) clearInterval(this.player);
-    }, this.#wait);
+      if (iterations === 0) cancelAnimationFrame(this.player);
+      else {
+        this.player = requestAnimationFrame(iter)
+      }
+    }
+    this.player = requestAnimationFrame(iter);
+
     document.getElementById("pause-play").innerHTML = "start";
     this.updateCountUI();
   }
@@ -397,7 +409,7 @@ class PlaygroundController extends Playground {
       this.iter_count = 0;
       document.getElementById("iteration-number").innerText = "0";
     }
-    clearInterval(this.player);
+    cancelAnimationFrame(this.player);
     this.player = null;
     this.state = this.STATUS.init;
   }
@@ -495,7 +507,7 @@ class PlaygroundController extends Playground {
     });
     let wait_slider = document.querySelector("#wait-slider");
     wait_slider.addEventListener("change", () => {
-      this.wait = 1000 / wait_slider.value;
+      this.wait = 100 / wait_slider.value;
       document.getElementById("wait-duration").innerText = wait_slider.value;
       // console.log("wait", (1000 / wait_slider.value).toFixed(0));
     });
@@ -593,6 +605,7 @@ class PlaygroundEditor {
       ];
       if (this.controller.isValidRow(row) && this.controller.isValidColumn(col)) {
         this.controller.field.toggleLife(row, col);
+        this.controller.initial_state = this.controller.field.clone();
       }
 
       this.controller.restart(true);

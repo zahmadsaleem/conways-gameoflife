@@ -100,7 +100,7 @@ fn randomCell(r: *std.Random.Xoshiro256) u2 {
 }
 
 pub fn main(init: std.process.Init) !void {
-    var r = std.Random.DefaultPrng.init(99);
+    var r = std.Random.DefaultPrng.init(@intCast(std.Io.Clock.real.now(init.io).toMilliseconds()));
     const arena: std.mem.Allocator = init.arena.allocator();
     const rows = 10;
     const columns = 10;

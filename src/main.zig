@@ -7,7 +7,7 @@ const conways_gameoflife = @import("conways_gameoflife");
 const Cell = struct {
     value: u4 = 0b0000, // 4 generations, each bit holds a generations value, latest says if alive or not
 
-    fn isAlive(self: *Cell) bool {
+    fn isAlive(self: *const Cell) bool {
         return (self.value & 0b0001) == 0b0001;
     }
 
@@ -41,19 +41,75 @@ const Cell = struct {
     }
 };
 
-const Playground = struct { rows: i16, columns: i16, grid: std.ArrayList(Cell) };
+const Playground = struct {
+    rows: u16,
+    columns: u16,
+    grid: []Cell,
+
+    fn neighborLifeCount(self: *Playground, row: u16, col: u16) u4 {
+        assert(self.rows > row);
+        assert(self.columns > col);
+        const indices = [8][2]u16{
+            [2]u16{ -1, -1 }, [2]u16{ -1, 0 }, [2]u16{ -1, 1 }, // previous row
+            [2]u16{ 0, -1 }, [2]u16{ 0, 1 }, // current row
+            [2]u16{ 1, -1 }, [2]u16{ 1, 0 }, [2]u16{ 1, 1 }, // next row
+        };
+        var neighbors: u4 = 0;
+        for (indices) |i| {
+            if (row == 0 and i[0] == -1) {
+                continue;
+            }
+            if (col == 0 and i[1] == -1) {
+                continue;
+            }
+            if (row == self.rows - 1 and i[0] == 1) {
+                continue;
+            }
+            if (col == self.columns and i[1] == 1) {
+                continue;
+            }
+            const row_index = row + i[0];
+            const col_index = col + i[1];
+            if (self.grid[row_index * self.columns + col_index].isAlive()) {
+                neighbors += 1;
+            }
+        }
+        return neighbors;
+    }
+
+    fn print(self: *Playground, writer: *std.Io.Writer) !void {
+        for (0..self.rows) |row_index| {
+            if (row_index > 0) {
+                try writer.printAsciiChar('\n', std.fmt.Options{});
+            }
+            for (0..self.columns) |col_index| {
+                const cell = self.grid[row_index * self.columns + col_index];
+                const display: u16 = switch (cell.isAlive()) {
+                    false => ' ',
+                    true => '\u{259f}',
+                };
+                try writer.printUnicodeCodepoint(display);
+            }
+        }
+        try writer.printAsciiChar('\n', std.fmt.Options{});
+    }
+};
 
 fn randomCell(r: *std.Random.Xoshiro256) u2 {
-    return r.random().uintAtMost(u2, 3);
+    return r.random().uintAtMost(u1, 1);
 }
 
 pub fn main(init: std.process.Init) !void {
     var r = std.Random.DefaultPrng.init(99);
-    for (0..10) |_| {
-        const mycellval = randomCell(&r);
-        std.debug.print("All your {} are belong to us.\n", .{mycellval});
-    }
     const arena: std.mem.Allocator = init.arena.allocator();
+    const rows = 10;
+    const columns = 10;
+    var buff: [rows * columns]Cell = undefined;
+    var playground = Playground{ .rows = rows, .columns = columns, .grid = &buff };
+    for (0..rows * columns) |i| {
+        const mycellval = randomCell(&r);
+        playground.grid[i] = Cell{ .value = @as(u4, mycellval) };
+    }
 
     // Accessing command line arguments:
     const args = try init.minimal.args.toSlice(arena);
@@ -70,8 +126,7 @@ pub fn main(init: std.process.Init) !void {
     var stdout_buffer: [1024]u8 = undefined;
     var stdout_file_writer: Io.File.Writer = .init(.stdout(), io, &stdout_buffer);
     const stdout_writer = &stdout_file_writer.interface;
-
-    try conways_gameoflife.printAnotherMessage(stdout_writer);
+    try playground.print(stdout_writer);
 
     try stdout_writer.flush(); // Don't forget to flush!
 }

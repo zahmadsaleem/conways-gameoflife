@@ -78,6 +78,18 @@ const Playground = struct {
         return neighbors;
     }
 
+    fn size(self: *const Playground) usize {
+        return self.rows * self.columns;
+    }
+
+    fn valueBuffer(self: *const Playground, allocator: std.mem.Allocator) ![]u4 {
+        var buff = try allocator.alloc(u4, self.rows * self.columns);
+        for (0..self.size()) |i| {
+            buff[i] = self.grid[i].value;
+        }
+        return buff;
+    }
+
     fn print(self: *const Playground, writer: *std.Io.Writer) !void {
         for (0..self.rows) |row_index| {
             if (row_index > 0) {
@@ -238,4 +250,26 @@ test "playground neighbors works" {
     try std.testing.expectEqual(2, playgound.neighborLifeCount(2, 0));
     try std.testing.expectEqual(2, playgound.neighborLifeCount(2, 1));
     try std.testing.expectEqual(2, playgound.neighborLifeCount(2, 2));
+}
+
+test "playground next generation works" {
+    var stable = [_]u4{
+        0b0000, 0b0010, 0b0000, // 0x0
+        0b0000, 0b0010, 0b0000, // 0x0
+        0b0000, 0b0010, 0b0000, // 0x0
+    };
+    const stableSlice: []u4 = stable[0..];
+    // next generation should basically be the same
+    var playgound = try Playground.fromBuffer(std.testing.allocator, 3, 3, stableSlice);
+    defer playgound.deinit(std.testing.allocator);
+    playgound.nextGen();
+    var expected = [_]u4{
+        0b0000, 0b0100, 0b0000, // 000
+        0b0010, 0b0110, 0b0010, // xxx
+        0b0000, 0b0100, 0b0000, // 000
+    };
+    const expectedSlice: []u4 = expected[0..];
+    const got = try playgound.valueBuffer(std.testing.allocator);
+    defer std.testing.allocator.free(got);
+    try std.testing.expectEqualSlices(u4, expectedSlice, got);
 }

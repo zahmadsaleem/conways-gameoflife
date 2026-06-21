@@ -5,35 +5,37 @@ const assert = std.debug.assert;
 const conways_gameoflife = @import("conways_gameoflife");
 
 const Cell = struct {
-    value: u4 = 0b0000, // 4 generations, each bit holds a generations value, latest says if alive or not
+    value: u4 = 0b0000, // 3 generations, each bit holds a generations value, g3-g2-g1-temp, temp is used for state management across generations
 
     fn isAlive(self: *const Cell) bool {
-        return (self.value & 0b0001) == 0b0001;
+        return (self.value & 0b0010) == 0b0010;
     }
 
-    fn setAlive(self: *Cell, alive: bool) void {
+    fn setAliveTemp(self: *Cell, alive: bool) void {
         if (!alive) {
-            self.value = self.value << 1;
-            assert(!self.isAlive());
+            self.value = self.value & 0b1110;
             return;
         }
-        self.value = (self.value << 1) + 1;
-        assert(self.isAlive());
+        self.value = self.value | 0b0001;
+    }
+
+    fn incrGeneration(self: *Cell) void {
+        self.value = self.value << 1;
     }
 
     fn getGenerationLife(self: *Cell, comptime gen: u2) bool {
-        const mask = 0b0001 << gen;
-        return ((self.value & mask) >> gen) == 0b0001;
+        assert(gen < 3);
+        const mask = 0b0010 << gen;
+        return ((self.value & mask) >> gen) == 0b0010;
     }
 
-    fn age(self: *Cell) u3 {
+    fn age(self: *Cell) u2 {
         if (!self.isAlive()) {
             return 0;
         }
-        switch (self.value & 0b1111) {
-            0b0011 => return 2,
-            0b0111 => return 3,
-            0b1111 => return 4,
+        switch (self.value & 0b1110) {
+            0b0110 => return 2,
+            0b1110 => return 3,
             else => {
                 return 1;
             },
@@ -74,6 +76,7 @@ const Playground = struct {
                 neighbors += 1;
             }
         }
+        assert(neighbors < 9);
         return neighbors;
     }
 
@@ -108,7 +111,7 @@ pub fn main(init: std.process.Init) !void {
     var playground = Playground{ .rows = rows, .columns = columns, .grid = &buff };
     for (0..rows * columns) |i| {
         const mycellval = randomCell(&r);
-        playground.grid[i] = Cell{ .value = @as(u4, mycellval) };
+        playground.grid[i] = Cell{ .value = @as(u4, mycellval) << 1 };
     }
 
     // Accessing command line arguments:
@@ -140,14 +143,22 @@ test "simple test" {
 }
 
 test "cell value works" {
-    var cell = Cell{ .value = 0b0100 };
+    var cell = Cell{ .value = 0b1000 };
     assert(!cell.isAlive());
     assert(!cell.getGenerationLife(0));
     assert(!cell.getGenerationLife(1));
     assert(cell.getGenerationLife(2));
-    assert(!cell.getGenerationLife(3));
-    cell.setAlive(true);
-    assert(cell.age() == 1);
-    cell.setAlive(false);
-    assert(cell.age() == 0);
+    cell.setAliveTemp(true);
+    std.debug.print("setAliveTemp: cell value {b}\n", .{cell.value});
+    cell.incrGeneration();
+    std.debug.print("incrGeneration: cell value {b}\n", .{cell.value});
+    assert(cell.isAlive());
+    try std.testing.expectEqual(1, cell.age());
+    cell.setAliveTemp(true);
+    cell.incrGeneration();
+    try std.testing.expectEqual(2, cell.age());
+    cell.setAliveTemp(false);
+    cell.incrGeneration();
+    assert(!cell.isAlive());
+    try std.testing.expectEqual(cell.age(), 0);
 }

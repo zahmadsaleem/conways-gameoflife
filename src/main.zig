@@ -21,13 +21,13 @@ const Cell = struct {
         self.value = self.value << 1;
     }
 
-    fn getGenerationLife(self: *Cell, comptime gen: u2) bool {
+    fn getGenerationLife(self: *const Cell, comptime gen: u2) bool {
         assert(gen < 3);
         const mask = 0b0010 << gen;
         return ((self.value & mask) >> gen) == 0b0010;
     }
 
-    fn age(self: *Cell) u2 {
+    fn age(self: *const Cell) u2 {
         if (!self.isAlive()) {
             return 0;
         }
@@ -46,7 +46,7 @@ const Playground = struct {
     columns: u16,
     grid: []Cell,
 
-    fn neighborLifeCount(self: *Playground, row: u16, col: u16) u4 {
+    fn neighborLifeCount(self: *const Playground, row: u16, col: u16) u4 {
         assert(self.rows > row);
         assert(self.columns > col);
         const indices = [8][2]i2{
@@ -78,7 +78,7 @@ const Playground = struct {
         return neighbors;
     }
 
-    fn print(self: *Playground, writer: *std.Io.Writer) !void {
+    fn print(self: *const Playground, writer: *std.Io.Writer) !void {
         for (0..self.rows) |row_index| {
             if (row_index > 0) {
                 try writer.printAsciiChar('\n', std.fmt.Options{});
@@ -104,14 +104,38 @@ const Playground = struct {
                     2...3 => cell.setAliveTemp(true),
                     else => cell.setAliveTemp(false),
                 }
+                self.grid[row_index * self.columns + col_index] = cell;
             }
         }
         for (0..self.rows) |row_index| {
             for (0..self.columns) |col_index| {
                 var cell = self.grid[row_index * self.columns + col_index];
                 cell.incrGeneration();
+                self.grid[row_index * self.columns + col_index] = cell;
             }
         }
+    }
+
+    //
+    // 1. Print multiline block once.
+    // 2. Remember how many terminal rows it used.
+    // 3. On the next update, move the cursor back up that many rows.
+    // 4. Clear those rows.
+    // 5. Print the new content in the same space.
+    //
+    // \x1b[{n}F   move cursor up n lines, to column 0
+    // \x1b[{n}A   move cursor up n lines, same column
+    // \x1b[2K     clear the current line
+    // \x1b[J      clear from cursor to end of screen
+    // \x1b[?25l   hide cursor
+    // \x1b[?25h   show cursor
+
+    fn clearPrint(self: *const Playground, w: *std.Io.Writer) !void {
+        try w.print("\x1b[{d}F", .{self.rows});
+        for (0..self.rows) |_| {
+            try w.print("\x1b[2K\n", .{});
+        }
+        try w.print("\x1b[{d}F", .{self.rows});
     }
 };
 
@@ -122,8 +146,8 @@ fn randomCell(r: *std.Random.Xoshiro256) u2 {
 pub fn main(init: std.process.Init) !void {
     var r = std.Random.DefaultPrng.init(@intCast(std.Io.Clock.real.now(init.io).toMilliseconds()));
     const arena: std.mem.Allocator = init.arena.allocator();
-    const rows = 5;
-    const columns = 5;
+    const rows = 100;
+    const columns = 100;
     var buff: [rows * columns]Cell = undefined;
     var playground = Playground{ .rows = rows, .columns = columns, .grid = &buff };
     for (0..rows * columns) |i| {
@@ -140,10 +164,12 @@ pub fn main(init: std.process.Init) !void {
     var stdout_buffer: [1024]u8 = undefined;
     var stdout_file_writer: Io.File.Writer = .init(.stdout(), io, &stdout_buffer);
     const stdout_writer = &stdout_file_writer.interface;
-    for (0..3) |_| {
+    for (0..100) |_| {
         try playground.print(stdout_writer);
         try stdout_writer.flush();
         playground.nextGen();
+        try std.Io.sleep(init.io, std.Io.Duration.fromMilliseconds(1000), std.Io.Clock.real);
+        try playground.clearPrint(stdout_writer);
     }
 }
 

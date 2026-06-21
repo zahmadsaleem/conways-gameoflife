@@ -49,10 +49,10 @@ const Playground = struct {
     fn neighborLifeCount(self: *Playground, row: u16, col: u16) u4 {
         assert(self.rows > row);
         assert(self.columns > col);
-        const indices = [8][2]u16{
-            [2]u16{ -1, -1 }, [2]u16{ -1, 0 }, [2]u16{ -1, 1 }, // previous row
-            [2]u16{ 0, -1 }, [2]u16{ 0, 1 }, // current row
-            [2]u16{ 1, -1 }, [2]u16{ 1, 0 }, [2]u16{ 1, 1 }, // next row
+        const indices = [8][2]i2{
+            [2]i2{ -1, -1 }, [2]i2{ -1, 0 }, [2]i2{ -1, 1 }, // previous row
+            [2]i2{ 0, -1 }, [2]i2{ 0, 1 }, // current row
+            [2]i2{ 1, -1 }, [2]i2{ 1, 0 }, [2]i2{ 1, 1 }, // next row
         };
         var neighbors: u4 = 0;
         for (indices) |i| {
@@ -65,11 +65,11 @@ const Playground = struct {
             if (row == self.rows - 1 and i[0] == 1) {
                 continue;
             }
-            if (col == self.columns and i[1] == 1) {
+            if (col == self.columns - 1 and i[1] == 1) {
                 continue;
             }
-            const row_index = row + i[0];
-            const col_index = col + i[1];
+            const row_index: u16 = @intCast(@as(i32, row) + i[0]);
+            const col_index: u16 = @intCast(@as(i32, col) + i[1]);
             if (self.grid[row_index * self.columns + col_index].isAlive()) {
                 neighbors += 1;
             }
@@ -94,6 +94,25 @@ const Playground = struct {
         }
         try writer.printAsciiChar('\n', std.fmt.Options{});
     }
+
+    fn nextGen(self: *Playground) void {
+        for (0..self.rows) |row_index| {
+            for (0..self.columns) |col_index| {
+                var cell = self.grid[row_index * self.columns + col_index];
+                switch (self.neighborLifeCount(@intCast(row_index), @intCast(col_index))) {
+                    0...1 => cell.setAliveTemp(false),
+                    2...3 => cell.setAliveTemp(true),
+                    else => cell.setAliveTemp(false),
+                }
+            }
+        }
+        for (0..self.rows) |row_index| {
+            for (0..self.columns) |col_index| {
+                var cell = self.grid[row_index * self.columns + col_index];
+                cell.incrGeneration();
+            }
+        }
+    }
 };
 
 fn randomCell(r: *std.Random.Xoshiro256) u2 {
@@ -103,8 +122,8 @@ fn randomCell(r: *std.Random.Xoshiro256) u2 {
 pub fn main(init: std.process.Init) !void {
     var r = std.Random.DefaultPrng.init(@intCast(std.Io.Clock.real.now(init.io).toMilliseconds()));
     const arena: std.mem.Allocator = init.arena.allocator();
-    const rows = 10;
-    const columns = 10;
+    const rows = 5;
+    const columns = 5;
     var buff: [rows * columns]Cell = undefined;
     var playground = Playground{ .rows = rows, .columns = columns, .grid = &buff };
     for (0..rows * columns) |i| {
@@ -121,9 +140,11 @@ pub fn main(init: std.process.Init) !void {
     var stdout_buffer: [1024]u8 = undefined;
     var stdout_file_writer: Io.File.Writer = .init(.stdout(), io, &stdout_buffer);
     const stdout_writer = &stdout_file_writer.interface;
-    try playground.print(stdout_writer);
-
-    try stdout_writer.flush();
+    for (0..3) |_| {
+        try playground.print(stdout_writer);
+        try stdout_writer.flush();
+        playground.nextGen();
+    }
 }
 
 test "cell value works" {

@@ -172,6 +172,19 @@ pub const Playground = struct {
         }
         return playground;
     }
+
+    pub fn random(allocator: std.mem.Allocator, io: std.Io, rows: u16, columns: u16) !Playground {
+        var r = std.Random.DefaultPrng.init(@intCast(std.Io.Clock.real.now(io).toMilliseconds()));
+
+        const buff = try allocator.alloc(Cell, rows * columns);
+
+        var playground = Playground{ .rows = rows, .columns = columns, .grid = buff };
+        for (0..rows * columns) |i| {
+            const mycellval = r.random().uintAtMost(u1, 1);
+            playground.grid[i] = Cell{ .value = @as(u4, mycellval) << 1 };
+        }
+        return playground;
+    }
 };
 
 test "cell value works" {

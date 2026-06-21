@@ -98,22 +98,27 @@ const Playground = struct {
     fn nextGen(self: *Playground) void {
         for (0..self.rows) |row_index| {
             for (0..self.columns) |col_index| {
-                var cell = self.grid[row_index * self.columns + col_index];
+                var cell = self.grid[self.cellIndex(row_index, col_index)];
                 switch (self.neighborLifeCount(@intCast(row_index), @intCast(col_index))) {
                     0...1 => cell.setAliveTemp(false),
-                    2...3 => cell.setAliveTemp(true),
+                    2 => cell.setAliveTemp(cell.isAlive()),
+                    3 => cell.setAliveTemp(true),
                     else => cell.setAliveTemp(false),
                 }
-                self.grid[row_index * self.columns + col_index] = cell;
+                self.grid[self.cellIndex(row_index, col_index)] = cell;
             }
         }
         for (0..self.rows) |row_index| {
             for (0..self.columns) |col_index| {
-                var cell = self.grid[row_index * self.columns + col_index];
+                var cell = self.grid[self.cellIndex(row_index, col_index)];
                 cell.incrGeneration();
-                self.grid[row_index * self.columns + col_index] = cell;
+                self.grid[self.cellIndex(row_index, col_index)] = cell;
             }
         }
+    }
+
+    fn cellIndex(self: *const Playground, row_index: usize, col_index: usize) usize {
+        return row_index * self.columns + col_index;
     }
 
     //
@@ -137,6 +142,24 @@ const Playground = struct {
         }
         try w.print("\x1b[{d}F", .{self.rows});
     }
+
+    fn deinit(self: *Playground, allocator: std.mem.Allocator) void {
+        allocator.free(self.grid);
+    }
+
+    fn new(allocator: std.mem.Allocator, rows: u16, columns: u16) !Playground {
+        const grid = try allocator.alloc(Cell, rows * columns);
+        return Playground{ .rows = rows, .columns = columns, .grid = grid };
+    }
+
+    fn fromBuffer(allocator: std.mem.Allocator, rows: u16, columns: u16, buff: []u4) !Playground {
+        assert(buff.len == rows * columns);
+        const playground = try Playground.new(allocator, rows, columns);
+        for (0..rows * columns) |pos| {
+            playground.grid[pos].value = buff[pos];
+        }
+        return playground;
+    }
 };
 
 fn randomCell(r: *std.Random.Xoshiro256) u2 {
@@ -145,9 +168,15 @@ fn randomCell(r: *std.Random.Xoshiro256) u2 {
 
 pub fn main(init: std.process.Init) !void {
     var r = std.Random.DefaultPrng.init(@intCast(std.Io.Clock.real.now(init.io).toMilliseconds()));
+
     const arena: std.mem.Allocator = init.arena.allocator();
-    const rows = 100;
-    const columns = 100;
+    const args = try init.minimal.args.toSlice(arena);
+    for (args) |arg| {
+        std.log.info("arg: {s}", .{arg});
+    }
+
+    const rows = 10;
+    const columns = 10;
     var buff: [rows * columns]Cell = undefined;
     var playground = Playground{ .rows = rows, .columns = columns, .grid = &buff };
     for (0..rows * columns) |i| {
@@ -155,15 +184,11 @@ pub fn main(init: std.process.Init) !void {
         playground.grid[i] = Cell{ .value = @as(u4, mycellval) << 1 };
     }
 
-    const args = try init.minimal.args.toSlice(arena);
-    for (args) |arg| {
-        std.log.info("arg: {s}", .{arg});
-    }
-
     const io = init.io;
     var stdout_buffer: [1024]u8 = undefined;
     var stdout_file_writer: Io.File.Writer = .init(.stdout(), io, &stdout_buffer);
     const stdout_writer = &stdout_file_writer.interface;
+
     for (0..100) |_| {
         try playground.print(stdout_writer);
         try stdout_writer.flush();
@@ -192,4 +217,25 @@ test "cell value works" {
     cell.incrGeneration();
     assert(!cell.isAlive());
     try std.testing.expectEqual(cell.age(), 0);
+}
+
+test "playground neighbors works" {
+    var stable = [_]u4{
+        0b0000, 0b0010, 0b0000, // 0x0
+        0b0010, 0b0000, 0b0010, // x0x
+        0b0000, 0b0010, 0b0000, // 0x0
+    };
+    const stableSlice: []u4 = stable[0..];
+    // next generation should basically be the same
+    var playgound = try Playground.fromBuffer(std.testing.allocator, 3, 3, stableSlice);
+    defer playgound.deinit(std.testing.allocator);
+    try std.testing.expectEqual(2, playgound.neighborLifeCount(0, 0));
+    try std.testing.expectEqual(2, playgound.neighborLifeCount(0, 1));
+    try std.testing.expectEqual(2, playgound.neighborLifeCount(0, 2));
+    try std.testing.expectEqual(2, playgound.neighborLifeCount(1, 0));
+    try std.testing.expectEqual(4, playgound.neighborLifeCount(1, 1));
+    try std.testing.expectEqual(2, playgound.neighborLifeCount(1, 2));
+    try std.testing.expectEqual(2, playgound.neighborLifeCount(2, 0));
+    try std.testing.expectEqual(2, playgound.neighborLifeCount(2, 1));
+    try std.testing.expectEqual(2, playgound.neighborLifeCount(2, 2));
 }

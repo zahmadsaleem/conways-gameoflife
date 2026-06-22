@@ -3,37 +3,37 @@ const Io = std.Io;
 const assert = std.debug.assert;
 
 pub const Cell = struct {
-    value: u4 = 0b0000, // 3 generations, each bit holds a generations value, g3-g2-g1-temp, temp is used for state management across generations
+    value: u4 = 0b0000, // 4 generations, each bit holds a generations value, g4-g3-g2-g1
 
     fn isAlive(self: *const Cell) bool {
-        return (self.value & 0b0010) == 0b0010;
+        return (self.value & 0b0001) == 0b0001;
     }
 
     fn isAliveInt(self: *const Cell) u4 {
-        return (self.value & 0b0010) >> 1;
+        return self.value & 0b0001;
     }
 
     fn setAliveTemp(self: *Cell, alive: bool) void {
         if (!alive) {
-            self.value = (self.value & 0b1110) << 1;
+            self.value = (self.value << 1) & 0b1110;
             return;
         }
-        self.value = (self.value | 0b0001) << 1;
+        self.value = (self.value << 1) | 0b0001;
     }
 
     fn getGenerationLife(self: *const Cell, comptime gen: u2) bool {
-        assert(gen < 3);
-        const mask = 0b0010 << gen;
-        return ((self.value & mask) >> gen) == 0b0010;
+        const mask = 0b0001 << gen;
+        return ((self.value & mask) >> gen) == 0b0001;
     }
 
-    fn age(self: *const Cell) u2 {
+    fn age(self: *const Cell) u3 {
         if (!self.isAlive()) {
             return 0;
         }
-        switch (self.value & 0b1110) {
-            0b0110 => return 2,
-            0b1110 => return 3,
+        switch (self.value & 0b1111) {
+            0b0011 => return 2,
+            0b0111 => return 3,
+            0b1111 => return 4,
             else => {
                 return 1;
             },
@@ -92,7 +92,7 @@ pub const Playground = struct {
     pub fn valueBuffer(self: *const Playground, allocator: std.mem.Allocator, omit_history: bool) ![]u4 {
         var buff = try allocator.alloc(u4, self.rows * self.columns);
         for (0..self.size()) |i| {
-            buff[i] = if (omit_history) self.grid[i].value & 0b0010 else self.grid[i].value;
+            buff[i] = if (omit_history) self.grid[i].value & 0b0001 else self.grid[i].value;
         }
         return buff;
     }
@@ -196,24 +196,27 @@ test "cell value works" {
     assert(cell.isAliveInt() == 0);
     assert(!cell.getGenerationLife(0));
     assert(!cell.getGenerationLife(1));
-    assert(cell.getGenerationLife(2));
+    assert(!cell.getGenerationLife(2));
+    assert(cell.getGenerationLife(3));
     cell.setAliveTemp(true);
     std.debug.print("setAliveTemp: cell value {b}\n", .{cell.value});
     assert(cell.isAlive());
     assert(cell.isAliveInt() == 1);
     try std.testing.expectEqual(1, cell.age());
     cell.setAliveTemp(true);
+    std.debug.print("setAliveTemp: cell value {b}\n", .{cell.value});
     try std.testing.expectEqual(2, cell.age());
     cell.setAliveTemp(false);
+    std.debug.print("setAliveTemp: cell value {b}\n", .{cell.value});
     assert(!cell.isAlive());
     try std.testing.expectEqual(cell.age(), 0);
 }
 
 test "playground neighbors works" {
     var stable = [_]u4{
-        0b0000, 0b0010, 0b0000, // 0x0
-        0b0010, 0b0000, 0b0010, // x0x
-        0b0000, 0b0010, 0b0000, // 0x0
+        0b0000, 0b0001, 0b0000, // 0x0
+        0b0001, 0b0000, 0b0001, // x0x
+        0b0000, 0b0001, 0b0000, // 0x0
     };
     const stableSlice: []u4 = stable[0..];
     // next generation should basically be the same
@@ -232,9 +235,9 @@ test "playground neighbors works" {
 
 test "playground next generation works" {
     var stable = [_]u4{
-        0b0000, 0b0010, 0b0000, // 0x0
-        0b0000, 0b0010, 0b0000, // 0x0
-        0b0000, 0b0010, 0b0000, // 0x0
+        0b0000, 0b0001, 0b0000, // 0x0
+        0b0000, 0b0001, 0b0000, // 0x0
+        0b0000, 0b0001, 0b0000, // 0x0
     };
     const stableSlice: []u4 = stable[0..];
     // next generation should basically be the same
@@ -243,7 +246,7 @@ test "playground next generation works" {
     playgound.nextGen();
     var expected = [_]u4{
         0b0000, 0b0000, 0b0000, // 000
-        0b0010, 0b0010, 0b0010, // xxx
+        0b0001, 0b0001, 0b0001, // xxx
         0b0000, 0b0000, 0b0000, // 000
     };
     const expectedSlice: []u4 = expected[0..];

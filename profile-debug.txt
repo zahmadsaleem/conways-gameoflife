@@ -1,7 +1,7 @@
-Analysis of sampling coglife (pid 61989) every 1 millisecond
-Process:         coglife [61989]
+Analysis of sampling coglife (pid 65282) every 1 millisecond
+Process:         coglife [65282]
 Path:            /Users/USER/*/coglife
-Load Address:    0x104db0000
+Load Address:    0x104c68000
 Identifier:      coglife
 Version:         0
 Code Type:       ARM64
@@ -9,29 +9,98 @@ Platform:        macOS
 Parent Process:  zsh [35800]
 Target Type:     live task
 
-Date/Time:       2026-06-22 21:42:08.784 +0200
-Launch Time:     2026-06-22 21:42:06.856 +0200
+Date/Time:       2026-06-22 23:24:45.017 +0200
+Launch Time:     2026-06-22 23:24:43.395 +0200
 OS Version:      macOS 15.5 (24F74)
 Report Version:  7
 Analysis Tool:   /usr/bin/sample
 
-Physical footprint:         9281K
-Physical footprint (peak):  9281K
+Physical footprint:         17.4M
+Physical footprint (peak):  17.4M
 Idle exit:                  untracked
 ----
 
 Call graph:
-    4224 Thread_1023548   DispatchQueue_1: com.apple.main-thread  (serial)
-      4224 start  (in dyld) + 6076  [0x1975ceb98]
-        4224 main  (in coglife) + 12096,11952,...  [0x104db3828,0x104db3798,...]  start.zig:663
+    4185 Thread_1088977   DispatchQueue_1: com.apple.main-thread  (serial)
+      4185 start  (in dyld) + 6076  [0x1975ceb98]
+        4185 main  (in coglife) + 1184  [0x104d674d4]  start.zig:663
+          4185 main.main  (in coglife) + 852  [0x104d66dfc]  main.zig:67
+            3055 root.Playground.nextGen  (in coglife) + 500  [0x104d6bf70]  root.zig:121
+            + 566 root.Playground.neighborLifeCount  (in coglife) + 1972,768,...  [0x104d6d3a4,0x104d6cef0,...]  root.zig:0
+            + 204 root.Playground.neighborLifeCount  (in coglife) + 1228,1172,...  [0x104d6d0bc,0x104d6d084,...]  root.zig:71
+            + 200 root.Playground.neighborLifeCount  (in coglife) + 492,744,...  [0x104d6cddc,0x104d6ced8,...]  root.zig:64
+            + 193 root.Playground.neighborLifeCount  (in coglife) + 1428,1484,...  [0x104d6d184,0x104d6d1bc,...]  root.zig:74
+            + 160 root.Playground.neighborLifeCount  (in coglife) + 1796,1740,...  [0x104d6d2f4,0x104d6d2bc,...]  root.zig:78
+            + 148 root.Playground.neighborLifeCount  (in coglife) + 2148,2204,...  [0x104d6d454,0x104d6d48c,...]  root.zig:82
+            + 145 root.Playground.neighborLifeCount  (in coglife) + 1948,1696,...  [0x104d6d38c,0x104d6d290,...]  root.zig:80
+            + 138 root.Playground.neighborLifeCount  (in coglife) + 592,536,...  [0x104d6ce40,0x104d6ce08,...]  root.zig:62
+            + 116 root.Playground.neighborLifeCount  (in coglife) + 1000,944,...  [0x104d6cfd8,0x104d6cfa0,...]  root.zig:66
+            + 100 root.Playground.neighborLifeCount  (in coglife) + 60,56  [0x104d6cc2c,0x104d6cc28]  root.zig:51
+            + 89 root.Playground.neighborLifeCount  (in coglife) + 156,160  [0x104d6cc8c,0x104d6cc90]  root.zig:55
+            + 88 root.Playground.neighborLifeCount  (in coglife) + 780  [0x104d6cefc]  root.zig:64
+            + ! 88 root.Cell.isAliveInt  (in coglife) + 36  [0x104d6d5a0]  root.zig:13
+            + 84 root.Playground.neighborLifeCount  (in coglife) + 1984  [0x104d6d3b0]  root.zig:80
+            + ! 84 root.Cell.isAliveInt  (in coglife) + 36  [0x104d6d5a0]  root.zig:13
+            + 78 root.Cell.isAliveInt  (in coglife) + 44,40  [0x104d6d5a8,0x104d6d5a4]  root.zig:13
+            + 75 root.Playground.neighborLifeCount  (in coglife) + 380  [0x104d6cd6c]  root.zig:59
+            + 71 root.Playground.neighborLifeCount  (in coglife) + 2240  [0x104d6d4b0]  root.zig:82
+            + ! 71 root.Cell.isAliveInt  (in coglife) + 36  [0x104d6d5a0]  root.zig:13
+            + 67 root.Playground.neighborLifeCount  (in coglife) + 1036  [0x104d6cffc]  root.zig:66
+            + ! 67 root.Cell.isAliveInt  (in coglife) + 36  [0x104d6d5a0]  root.zig:13
+            + 66 root.Playground.neighborLifeCount  (in coglife) + 76  [0x104d6cc3c]  root.zig:51
+            + ! 35 debug.assert  (in coglife) + 36  [0x104c6c030]  debug.zig:420
+            + ! 31 debug.assert  (in coglife) + 24  [0x104c6c024]  debug.zig:418
+            + 61 root.Playground.neighborLifeCount  (in coglife) + 104  [0x104d6cc58]  root.zig:52
+            + ! 58 debug.assert  (in coglife) + 36,28  [0x104c6c030,0x104c6c028]  debug.zig:420
+            + ! 3 debug.assert  (in coglife) + 24  [0x104c6c024]  debug.zig:418
+            + 57 root.Playground.neighborLifeCount  (in coglife) + 260,308,...  [0x104d6ccf4,0x104d6cd24,...]  root.zig:57
+            + 46 root.Playground.neighborLifeCount  (in coglife) + 1128  [0x104d6d058]  root.zig:73
+            + 39 root.Playground.neighborLifeCount  (in coglife) + 868  [0x104d6cf54]  root.zig:65
+            + 38 root.Playground.neighborLifeCount  (in coglife) + 1356  [0x104d6d13c]  root.zig:76
+            + 31 root.Playground.neighborLifeCount  (in coglife) + 1832  [0x104d6d318]  root.zig:78
+            + ! 31 root.Cell.isAliveInt  (in coglife) + 36  [0x104d6d5a0]  root.zig:13
+            + 31 root.Playground.neighborLifeCount  (in coglife) + 2072  [0x104d6d408]  root.zig:81
+            + 29 root.Playground.neighborLifeCount  (in coglife) + 88  [0x104d6cc48]  root.zig:52
+            + 29 root.Playground.neighborLifeCount  (in coglife) + 1264  [0x104d6d0e0]  root.zig:71
+            + ! 29 root.Cell.isAliveInt  (in coglife) + 36  [0x104d6d5a0]  root.zig:13
+            + 28 root.Playground.neighborLifeCount  (in coglife) + 216  [0x104d6ccc8]  root.zig:56
+            + 25 root.Playground.neighborLifeCount  (in coglife) + 24,48,...  [0x104d6cc08,0x104d6cc20,...]  root.zig:50
+            + 25 root.Playground.neighborLifeCount  (in coglife) + 416  [0x104d6cd90]  root.zig:60
+            + 25 root.Playground.neighborLifeCount  (in coglife) + 628  [0x104d6ce64]  root.zig:62
+            + ! 25 root.Cell.isAliveInt  (in coglife) + 36  [0x104d6d5a0]  root.zig:13
+            + 2 root.Playground.neighborLifeCount  (in coglife) + 368  [0x104d6cd60]  root.zig:58
+            + 1 root.Playground.neighborLifeCount  (in coglife) + 1520  [0x104d6d1e0]  root.zig:74
+            +   1 root.Cell.isAliveInt  (in coglife) + 36  [0x104d6d5a0]  root.zig:13
+            207 root.Playground.nextGen  (in coglife) + 584  [0x104d6bfc4]  root.zig:127
+            + 170 root.Playground.cellIndex  (in coglife) + 72,100,...  [0x104d6d5f4,0x104d6d610,...]  root.zig:136
+            + 37 root.Playground.cellIndex  (in coglife) + 36,28  [0x104d6d5d0,0x104d6d5c8]  root.zig:135
+            198 root.Playground.nextGen  (in coglife) + 312  [0x104d6beb4]  root.zig:120
+            + 178 root.Playground.cellIndex  (in coglife) + 60,100,...  [0x104d6d5e8,0x104d6d610,...]  root.zig:136
+            + 20 root.Playground.cellIndex  (in coglife) + 32  [0x104d6d5cc]  root.zig:135
+            158 root.Playground.nextGen  (in coglife) + 448,736,...  [0x104d6bf3c,0x104d6c05c,...]  root.zig:0
+            131 root.Playground.nextGen  (in coglife) + 392,388,...  [0x104d6bf04,0x104d6bf00,...]  root.zig:121
+            116 root.Playground.nextGen  (in coglife) + 304,340,...  [0x104d6beac,0x104d6bed0,...]  root.zig:120
+            103 root.Playground.nextGen  (in coglife) + 248,256,...  [0x104d6be74,0x104d6be7c,...]  root.zig:119
+            101 root.Playground.nextGen  (in coglife) + 576,612  [0x104d6bfbc,0x104d6bfe0]  root.zig:127
+            53 root.Playground.nextGen  (in coglife) + 708  [0x104d6c040]  root.zig:122
+            + 27 root.Cell.setAliveTemp  (in coglife) + 112  [0x104d6c2c8]  root.zig:19
+            + 26 root.Cell.setAliveTemp  (in coglife) + 32  [0x104d6c278]  root.zig:16
+            52 root.Playground.neighborLifeCount  (in coglife) + 1616  [0x104d6d240]  root.zig:85
+            11 root.Playground.nextGen  (in coglife) + 272  [0x104d6be8c]  root.zig:128
 
 Total number in stack (recursive counted multiple, when >=5):
+        9       root.Cell.isAliveInt  (in coglife) + 0  [0x104d6d57c]  root.zig:13
 
 Sort by top of stack, same collapsed (when >= 5):
-        main  (in coglife)        4224
+        root.Playground.neighborLifeCount  (in coglife)        2506
+        root.Playground.nextGen  (in coglife)        620
+        root.Cell.isAliveInt  (in coglife)        474
+        root.Playground.cellIndex  (in coglife)        405
+        debug.assert  (in coglife)        127
+        root.Cell.setAliveTemp  (in coglife)        53
 
 Binary Images:
-       0x104db0000 -        0x104dfd55f +coglife (0) <510DF66C-604E-363A-B1B8-13414AA172CC> /Users/*/coglife
+       0x104c68000 -        0x104de6753 +coglife (0) <3FEB3DC6-DC1A-34AE-963D-EA2A7304F1B2> /Users/*/coglife
        0x197574000 -        0x1975c7893  libobjc.A.dylib (940.4) <4966864D-C147-33D3-BB18-1E3979590B6D> /usr/lib/libobjc.A.dylib
        0x1975c8000 -        0x1976634cf  dyld (1.0.0 - 1285.19) <9CF0401A-A938-389E-A77D-9E9608076CCF> /usr/lib/dyld
        0x197664000 -        0x197667168  libsystem_blocks.dylib (96) <4740F383-F4C0-328E-8753-41E8982EC94A> /usr/lib/system/libsystem_blocks.dylib

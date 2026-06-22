@@ -18,11 +18,11 @@ fn parseArgs(args: []const []const u8) !CliContext {
         }
         if (std.mem.startsWith(u8, arg, "--columns=")) {
             const num = try extractNumArg("columns", arg);
-            cli.rows = num;
+            cli.columns = num;
         }
         if (std.mem.startsWith(u8, arg, "--generations=")) {
             const num = try extractNumArg("generations", arg);
-            cli.rows = num;
+            cli.generations = num;
         }
     }
     return cli;
@@ -50,7 +50,7 @@ pub fn main(init: std.process.Init) !void {
     var stdout_buffer: [1024]u8 = undefined;
     var stdout_file_writer: Io.File.Writer = .init(.stdout(), io, &stdout_buffer);
     const stdout_writer = &stdout_file_writer.interface;
-
+    std.debug.print("running with args: #{}\n", .{cli});
     for (0..cli.generations) |_| {
         try playground.print(stdout_writer);
         try stdout_writer.flush();

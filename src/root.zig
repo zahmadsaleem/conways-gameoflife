@@ -9,6 +9,10 @@ pub const Cell = struct {
         return (self.value & 0b0010) == 0b0010;
     }
 
+    fn isAliveInt(self: *const Cell) u4 {
+        return (self.value & 0b0010) >> 1;
+    }
+
     fn setAliveTemp(self: *Cell, alive: bool) void {
         if (!alive) {
             self.value = self.value & 0b1110;
@@ -49,32 +53,33 @@ pub const Playground = struct {
     fn neighborLifeCount(self: *const Playground, row: u32, col: u32) u4 {
         assert(self.rows > row);
         assert(self.columns > col);
-        const indices = [8][2]i2{
-            [2]i2{ -1, -1 }, [2]i2{ -1, 0 }, [2]i2{ -1, 1 }, // previous row
-            [2]i2{ 0, -1 }, [2]i2{ 0, 1 }, // current row
-            [2]i2{ 1, -1 }, [2]i2{ 1, 0 }, [2]i2{ 1, 1 }, // next row
-        };
         var neighbors: u4 = 0;
-        for (indices) |i| {
-            if (row == 0 and i[0] == -1) {
-                continue;
+
+        if (row != 0) {
+            if (col != 0) {
+                neighbors += self.grid[self.cellIndex(row - 1, col - 1)].isAliveInt();
             }
-            if (col == 0 and i[1] == -1) {
-                continue;
-            }
-            if (row == self.rows - 1 and i[0] == 1) {
-                continue;
-            }
-            if (col == self.columns - 1 and i[1] == 1) {
-                continue;
-            }
-            const row_index: u32 = @intCast(@as(i64, row) + i[0]);
-            const col_index: u32 = @intCast(@as(i64, col) + i[1]);
-            if (self.grid[row_index * self.columns + col_index].isAlive()) {
-                neighbors += 1;
+            neighbors += self.grid[self.cellIndex(row - 1, col)].isAliveInt();
+            if (col != self.columns - 1) {
+                neighbors += self.grid[self.cellIndex(row - 1, col + 1)].isAliveInt();
             }
         }
-        assert(neighbors < 9);
+
+        if (col != 0) {
+            neighbors += self.grid[self.cellIndex(row, col - 1)].isAliveInt();
+        }
+        if (col != self.columns - 1) {
+            neighbors += self.grid[self.cellIndex(row, col + 1)].isAliveInt();
+        }
+        if (row != self.rows - 1) {
+            if (col != 0) {
+                neighbors += self.grid[self.cellIndex(row + 1, col - 1)].isAliveInt();
+            }
+            neighbors += self.grid[self.cellIndex(row + 1, col)].isAliveInt();
+            if (col != self.columns - 1) {
+                neighbors += self.grid[self.cellIndex(row + 1, col + 1)].isAliveInt();
+            }
+        }
         return neighbors;
     }
 
@@ -190,6 +195,7 @@ pub const Playground = struct {
 test "cell value works" {
     var cell = Cell{ .value = 0b1000 };
     assert(!cell.isAlive());
+    assert(cell.isAliveInt() == 0);
     assert(!cell.getGenerationLife(0));
     assert(!cell.getGenerationLife(1));
     assert(cell.getGenerationLife(2));
@@ -198,6 +204,7 @@ test "cell value works" {
     cell.incrGeneration();
     std.debug.print("incrGeneration: cell value {b}\n", .{cell.value});
     assert(cell.isAlive());
+    assert(cell.isAliveInt() == 1);
     try std.testing.expectEqual(1, cell.age());
     cell.setAliveTemp(true);
     cell.incrGeneration();

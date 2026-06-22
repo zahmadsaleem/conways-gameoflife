@@ -15,14 +15,10 @@ pub const Cell = struct {
 
     fn setAliveTemp(self: *Cell, alive: bool) void {
         if (!alive) {
-            self.value = self.value & 0b1110;
+            self.value = (self.value & 0b1110) << 1;
             return;
         }
-        self.value = self.value | 0b0001;
-    }
-
-    fn incrGeneration(self: *Cell) void {
-        self.value = self.value << 1;
+        self.value = (self.value | 0b0001) << 1;
     }
 
     fn getGenerationLife(self: *const Cell, comptime gen: u2) bool {
@@ -49,6 +45,7 @@ pub const Playground = struct {
     rows: u32,
     columns: u32,
     grid: []Cell,
+    swap: []Cell = undefined,
 
     fn neighborLifeCount(self: *const Playground, row: u32, col: u32) u4 {
         assert(self.rows > row);
@@ -127,16 +124,12 @@ pub const Playground = struct {
                     3 => cell.setAliveTemp(true),
                     else => cell.setAliveTemp(false),
                 }
-                self.grid[self.cellIndex(row_index, col_index)] = cell;
+                self.swap[self.cellIndex(row_index, col_index)] = cell;
             }
         }
-        for (0..self.rows) |row_index| {
-            for (0..self.columns) |col_index| {
-                var cell = self.grid[self.cellIndex(row_index, col_index)];
-                cell.incrGeneration();
-                self.grid[self.cellIndex(row_index, col_index)] = cell;
-            }
-        }
+        const temp = self.grid;
+        self.grid = self.swap;
+        self.swap = temp;
     }
 
     fn cellIndex(self: *const Playground, row_index: usize, col_index: usize) usize {
@@ -167,11 +160,13 @@ pub const Playground = struct {
 
     pub fn deinit(self: *Playground, allocator: std.mem.Allocator) void {
         allocator.free(self.grid);
+        allocator.free(self.swap);
     }
 
     pub fn new(allocator: std.mem.Allocator, rows: u32, columns: u32) !Playground {
         const grid = try allocator.alloc(Cell, rows * columns);
-        return Playground{ .rows = rows, .columns = columns, .grid = grid };
+        const swap = try allocator.alloc(Cell, rows * columns);
+        return Playground{ .rows = rows, .columns = columns, .grid = grid, .swap = swap };
     }
 
     pub fn fromBuffer(allocator: std.mem.Allocator, rows: u32, columns: u32, buff: []u4) !Playground {
@@ -186,9 +181,7 @@ pub const Playground = struct {
     pub fn random(allocator: std.mem.Allocator, io: std.Io, rows: u32, columns: u32) !Playground {
         var r = std.Random.DefaultPrng.init(@intCast(std.Io.Clock.real.now(io).toMilliseconds()));
 
-        const buff = try allocator.alloc(Cell, rows * columns);
-
-        var playground = Playground{ .rows = rows, .columns = columns, .grid = buff };
+        var playground = try Playground.new(allocator, rows, columns);
         for (0..rows * columns) |i| {
             const mycellval = r.random().uintAtMost(u1, 1);
             playground.grid[i] = Cell{ .value = @as(u4, mycellval) << 1 };
@@ -206,16 +199,12 @@ test "cell value works" {
     assert(cell.getGenerationLife(2));
     cell.setAliveTemp(true);
     std.debug.print("setAliveTemp: cell value {b}\n", .{cell.value});
-    cell.incrGeneration();
-    std.debug.print("incrGeneration: cell value {b}\n", .{cell.value});
     assert(cell.isAlive());
     assert(cell.isAliveInt() == 1);
     try std.testing.expectEqual(1, cell.age());
     cell.setAliveTemp(true);
-    cell.incrGeneration();
     try std.testing.expectEqual(2, cell.age());
     cell.setAliveTemp(false);
-    cell.incrGeneration();
     assert(!cell.isAlive());
     try std.testing.expectEqual(cell.age(), 0);
 }

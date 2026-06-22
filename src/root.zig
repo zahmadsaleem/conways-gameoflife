@@ -42,11 +42,11 @@ pub const Cell = struct {
 };
 
 pub const Playground = struct {
-    rows: u16,
-    columns: u16,
+    rows: u32,
+    columns: u32,
     grid: []Cell,
 
-    fn neighborLifeCount(self: *const Playground, row: u16, col: u16) u4 {
+    fn neighborLifeCount(self: *const Playground, row: u32, col: u32) u4 {
         assert(self.rows > row);
         assert(self.columns > col);
         const indices = [8][2]i2{
@@ -68,8 +68,8 @@ pub const Playground = struct {
             if (col == self.columns - 1 and i[1] == 1) {
                 continue;
             }
-            const row_index: u16 = @intCast(@as(i32, row) + i[0]);
-            const col_index: u16 = @intCast(@as(i32, col) + i[1]);
+            const row_index: u32 = @intCast(@as(i64, row) + i[0]);
+            const col_index: u32 = @intCast(@as(i64, col) + i[1]);
             if (self.grid[row_index * self.columns + col_index].isAlive()) {
                 neighbors += 1;
             }
@@ -159,12 +159,12 @@ pub const Playground = struct {
         allocator.free(self.grid);
     }
 
-    pub fn new(allocator: std.mem.Allocator, rows: u16, columns: u16) !Playground {
+    pub fn new(allocator: std.mem.Allocator, rows: u32, columns: u32) !Playground {
         const grid = try allocator.alloc(Cell, rows * columns);
         return Playground{ .rows = rows, .columns = columns, .grid = grid };
     }
 
-    pub fn fromBuffer(allocator: std.mem.Allocator, rows: u16, columns: u16, buff: []u4) !Playground {
+    pub fn fromBuffer(allocator: std.mem.Allocator, rows: u32, columns: u32, buff: []u4) !Playground {
         assert(buff.len == rows * columns);
         const playground = try Playground.new(allocator, rows, columns);
         for (0..rows * columns) |pos| {
@@ -173,7 +173,7 @@ pub const Playground = struct {
         return playground;
     }
 
-    pub fn random(allocator: std.mem.Allocator, io: std.Io, rows: u16, columns: u16) !Playground {
+    pub fn random(allocator: std.mem.Allocator, io: std.Io, rows: u32, columns: u32) !Playground {
         var r = std.Random.DefaultPrng.init(@intCast(std.Io.Clock.real.now(io).toMilliseconds()));
 
         const buff = try allocator.alloc(Cell, rows * columns);

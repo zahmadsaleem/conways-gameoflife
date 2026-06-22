@@ -7,6 +7,8 @@ const CliContext = struct {
     rows: u16 = 25,
     columns: u16 = 25,
     generations: u16 = 100,
+    disable_render: bool = false,
+    sleep_ms: u8 = 60,
 };
 
 fn parseArgs(args: []const []const u8) !CliContext {
@@ -23,6 +25,12 @@ fn parseArgs(args: []const []const u8) !CliContext {
         if (std.mem.startsWith(u8, arg, "--generations=")) {
             const num = try extractNumArg("generations", arg);
             cli.generations = num;
+        }
+        if (std.mem.eql(u8, arg, "--no-render")) {
+            cli.disable_render = true;
+        }
+        if (std.mem.startsWith(u8, arg, "--sleep=")) {
+            cli.sleep_ms = @intCast(try extractNumArg("sleep", arg));
         }
     }
     return cli;
@@ -52,10 +60,15 @@ pub fn main(init: std.process.Init) !void {
     const stdout_writer = &stdout_file_writer.interface;
     std.debug.print("running with args: #{}\n", .{cli});
     for (0..cli.generations) |_| {
-        try playground.print(stdout_writer);
-        try stdout_writer.flush();
+        if (!cli.disable_render) {
+            try playground.print(stdout_writer);
+            try stdout_writer.flush();
+        }
         playground.nextGen();
-        try std.Io.sleep(init.io, std.Io.Duration.fromMilliseconds(60), std.Io.Clock.real);
+        if (cli.sleep_ms > 0) {
+            try std.Io.sleep(init.io, std.Io.Duration.fromMilliseconds(cli.sleep_ms), std.Io.Clock.real);
+        }
+        if (cli.disable_render) continue;
         try playground.clearPrint(stdout_writer);
     }
 }

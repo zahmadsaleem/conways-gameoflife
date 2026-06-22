@@ -55,29 +55,34 @@ pub const Playground = struct {
         assert(self.columns > col);
         var neighbors: u4 = 0;
 
-        if (row != 0) {
-            if (col != 0) {
-                neighbors += self.grid[self.cellIndex(row - 1, col - 1)].isAliveInt();
+        const prev_row = (row -| 1) * self.columns;
+        const current_row = row * self.columns;
+        const next_row = (row + 1) * self.columns;
+        const prev_col = col -| 1;
+        const next_col = col + 1;
+        if (row > 0) {
+            if (col > 0) {
+                neighbors += self.grid[prev_row + prev_col].isAliveInt();
             }
-            neighbors += self.grid[self.cellIndex(row - 1, col)].isAliveInt();
-            if (col != self.columns - 1) {
-                neighbors += self.grid[self.cellIndex(row - 1, col + 1)].isAliveInt();
+            neighbors += self.grid[prev_row + col].isAliveInt();
+            if (col < self.columns - 1) {
+                neighbors += self.grid[prev_row + next_col].isAliveInt();
             }
         }
 
-        if (col != 0) {
-            neighbors += self.grid[self.cellIndex(row, col - 1)].isAliveInt();
+        if (col > 0) {
+            neighbors += self.grid[current_row + prev_col].isAliveInt();
         }
-        if (col != self.columns - 1) {
-            neighbors += self.grid[self.cellIndex(row, col + 1)].isAliveInt();
+        if (col < self.columns - 1) {
+            neighbors += self.grid[current_row + next_col].isAliveInt();
         }
-        if (row != self.rows - 1) {
-            if (col != 0) {
-                neighbors += self.grid[self.cellIndex(row + 1, col - 1)].isAliveInt();
+        if (row < self.rows - 1) {
+            if (col > 0) {
+                neighbors += self.grid[next_row + prev_col].isAliveInt();
             }
-            neighbors += self.grid[self.cellIndex(row + 1, col)].isAliveInt();
-            if (col != self.columns - 1) {
-                neighbors += self.grid[self.cellIndex(row + 1, col + 1)].isAliveInt();
+            neighbors += self.grid[next_row + col].isAliveInt();
+            if (col < self.columns - 1) {
+                neighbors += self.grid[next_row + next_col].isAliveInt();
             }
         }
         return neighbors;
@@ -87,10 +92,10 @@ pub const Playground = struct {
         return self.rows * self.columns;
     }
 
-    pub fn valueBuffer(self: *const Playground, allocator: std.mem.Allocator) ![]u4 {
+    pub fn valueBuffer(self: *const Playground, allocator: std.mem.Allocator, omit_history: bool) ![]u4 {
         var buff = try allocator.alloc(u4, self.rows * self.columns);
         for (0..self.size()) |i| {
-            buff[i] = self.grid[i].value;
+            buff[i] = if (omit_history) self.grid[i].value & 0b0010 else self.grid[i].value;
         }
         return buff;
     }
@@ -248,12 +253,12 @@ test "playground next generation works" {
     defer playgound.deinit(std.testing.allocator);
     playgound.nextGen();
     var expected = [_]u4{
-        0b0000, 0b0100, 0b0000, // 000
-        0b0010, 0b0110, 0b0010, // xxx
-        0b0000, 0b0100, 0b0000, // 000
+        0b0000, 0b0000, 0b0000, // 000
+        0b0010, 0b0010, 0b0010, // xxx
+        0b0000, 0b0000, 0b0000, // 000
     };
     const expectedSlice: []u4 = expected[0..];
-    const got = try playgound.valueBuffer(std.testing.allocator);
+    const got = try playgound.valueBuffer(std.testing.allocator, true);
     defer std.testing.allocator.free(got);
     try std.testing.expectEqualSlices(u4, expectedSlice, got);
 }

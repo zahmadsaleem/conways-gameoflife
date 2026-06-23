@@ -123,7 +123,7 @@ pub const Playground = struct {
     fn cellIndex(self: *const Playground, row_index: usize, col_index: usize) struct { usize, u3 } {
         const mod: u3 = @intCast((row_index * self.columns + col_index) % 8);
         return .{
-            if (mod == 0) (row_index * self.columns + col_index) / 8 else ((row_index * self.columns + col_index) / 8 + 1),
+            ((row_index * self.columns + col_index) / 8),
             mod,
         };
     }
@@ -214,6 +214,21 @@ test "cell value works" {
     std.debug.print("setAlive: cell value {b}\n", .{cell.value});
     assert(!cell.isAlive(2));
     assert(cell.isAliveInt(2) == 0);
+}
+
+test "cellIndex works" {
+    var playground = try Playground.new(std.testing.allocator, 3, 3);
+    assert(playground.grid.len == 2);
+    defer playground.deinit(std.testing.allocator);
+    try std.testing.expectEqual(.{ 0, @as(u3, 0) }, playground.cellIndex(0, 0));
+    try std.testing.expectEqual(.{ 0, @as(u3, 1) }, playground.cellIndex(0, 1));
+    try std.testing.expectEqual(.{ 0, @as(u3, 2) }, playground.cellIndex(0, 2));
+    try std.testing.expectEqual(.{ 0, @as(u3, 3) }, playground.cellIndex(1, 0));
+    try std.testing.expectEqual(.{ 0, @as(u3, 4) }, playground.cellIndex(1, 1));
+    try std.testing.expectEqual(.{ 0, @as(u3, 5) }, playground.cellIndex(1, 2));
+    try std.testing.expectEqual(.{ 0, @as(u3, 6) }, playground.cellIndex(2, 0));
+    try std.testing.expectEqual(.{ 0, @as(u3, 7) }, playground.cellIndex(2, 1));
+    try std.testing.expectEqual(.{ 1, @as(u3, 0) }, playground.cellIndex(2, 2));
 }
 
 test "playground neighbors works" {

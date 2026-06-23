@@ -110,8 +110,9 @@ pub const Playground = struct {
                 try writer.printAsciiChar('\n', std.fmt.Options{});
             }
             for (0..self.columns) |col_index| {
-                const cell = self.grid[row_index * self.columns + col_index];
-                const display: u16 = switch (cell.isAlive()) {
+                const cellIdx = self.cellIndex(row_index, col_index);
+                const cell = self.grid[cellIdx[0]];
+                const display: u16 = switch (cell.isAlive(cellIdx[1])) {
                     false => ' ',
                     true => '\u{259f}',
                 };

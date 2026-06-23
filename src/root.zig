@@ -3,7 +3,7 @@ const Io = std.Io;
 const assert = std.debug.assert;
 
 pub const Cell = struct {
-    value: u8 = 0, // 8 lives, each bit holds a life value.
+    value: u8 = 0b00000000, // 8 lives, each bit holds a life value.
 
     fn isAlive(self: *const Cell, index: u3) bool {
         const _index = 7 - index;
@@ -31,7 +31,7 @@ pub const Playground = struct {
     rows: u32,
     columns: u32,
     grid: []Cell,
-    swap: []Cell = undefined,
+    swap: []Cell,
 
     fn neighborLifeCount(self: *const Playground, row: u32, col: u32) u4 {
         assert(self.rows > row);
@@ -49,32 +49,54 @@ pub const Playground = struct {
         const c5 = self.cellIndex(row + 1, col -| 1);
         const c6 = self.cellIndex(row + 1, col);
         const c7 = self.cellIndex(row + 1, col + 1);
-        std.debug.print("row:{} col:{}\nc0:{} c1:{} c2:{}\nc3:{}\tc4:{}\nc5:{} c6:{} c7{}\n", .{ row, col, c0, c1, c1, c3, c4, c5, c6, c7 });
+        // std.debug.print("row:{} col:{}\n", .{ row, col });
         if (row > 0) {
             if (col > 0) {
+                // std.debug.print("c0:{}", .{c0});
                 neighbors += self.grid[c0[0]].isAliveInt(c0[1]);
+            } else {
+                // std.debug.print("\t\t", .{});
             }
+
+            // std.debug.print(" c1:{} ", .{c1});
             neighbors += self.grid[c1[0]].isAliveInt(c1[1]);
             if (col < self.columns - 1) {
+                // std.debug.print("c2:{}\n", .{c2});
                 neighbors += self.grid[c2[0]].isAliveInt(c2[1]);
+            } else {
+                // std.debug.print("\n", .{});
             }
         }
 
         if (col > 0) {
+            // std.debug.print("c3:{}", .{c3});
             neighbors += self.grid[c3[0]].isAliveInt(c3[1]);
+        } else {
+            // std.debug.print("\t\t", .{});
         }
+        std.debug.print("\t\t", .{});
         if (col < self.columns - 1) {
+            // std.debug.print("c4:{}\n", .{c4});
             neighbors += self.grid[c4[0]].isAliveInt(c4[1]);
+        } else {
+            // std.debug.print("\n", .{});
         }
+
         if (row < self.rows - 1) {
             if (col > 0) {
+                // std.debug.print("c5:{} ", .{c5});
                 neighbors += self.grid[c5[0]].isAliveInt(c5[1]);
+            } else {
+                // std.debug.print("\t\t", .{});
             }
+            // std.debug.print(" c6:{} ", .{c6});
             neighbors += self.grid[c6[0]].isAliveInt(c6[1]);
             if (col < self.columns - 1) {
+                // std.debug.print("c7:{}", .{c7});
                 neighbors += self.grid[c7[0]].isAliveInt(c7[1]);
             }
         }
+        // std.debug.print("\n\n", .{});
         return neighbors;
     }
 
@@ -156,20 +178,25 @@ pub const Playground = struct {
     }
 
     pub fn new(allocator: std.mem.Allocator, rows: u32, columns: u32) !Playground {
-        const numCells = if ((rows * columns / 8) * 8 < (rows * columns)) (rows * columns / 8) + 1 else (rows * columns / 8);
+        const numCells = if (rows * columns % 8 > 0) (rows * columns / 8) + 1 else (rows * columns / 8);
         const grid = try allocator.alloc(Cell, numCells);
+        @memset(grid, Cell{ .value = 0 });
         const swap = try allocator.alloc(Cell, numCells);
+        @memset(swap, Cell{ .value = 0 });
         return Playground{ .rows = rows, .columns = columns, .grid = grid, .swap = swap };
     }
 
     pub fn fromBuffer(allocator: std.mem.Allocator, rows: u32, columns: u32, aliveIndices: []u16) !Playground {
         const playground = try Playground.new(allocator, rows, columns);
+        assert(playground.grid[0].value == 0);
         for (aliveIndices) |pos| {
             const cellPos = pos / 8;
             const lifePos = pos % 8;
             var cell = playground.grid[cellPos];
+            std.debug.print("setAlive: before val:{b}\n", .{cell.value});
             cell.setAlive(@intCast(lifePos), true);
             playground.grid[cellPos] = cell;
+            std.debug.print("setAlive: pos:{} after val:{b}\n", .{ lifePos, cell.value });
         }
         return playground;
     }
@@ -239,6 +266,15 @@ test "playground neighbors works" {
     // next generation should basically be the same
     var playgound = try Playground.fromBuffer(std.testing.allocator, 3, 3, stable[0..]);
     defer playgound.deinit(std.testing.allocator);
+    try std.testing.expectEqual(0b01010101, playgound.grid[0].value);
+    assert(playgound.grid[0].isAlive(1));
+    assert(!playgound.grid[0].isAlive(2));
+    assert(playgound.grid[0].isAlive(3));
+    assert(!playgound.grid[0].isAlive(4));
+    assert(playgound.grid[0].isAlive(5));
+    assert(!playgound.grid[0].isAlive(6));
+    assert(playgound.grid[0].isAlive(7));
+    assert(!playgound.grid[1].isAlive(1));
     try std.testing.expectEqual(2, playgound.neighborLifeCount(0, 0));
     try std.testing.expectEqual(2, playgound.neighborLifeCount(0, 1));
     try std.testing.expectEqual(2, playgound.neighborLifeCount(0, 2));

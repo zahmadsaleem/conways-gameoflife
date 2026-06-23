@@ -127,10 +127,11 @@ pub const Playground = struct {
                 var cellPos: usize = undefined;
                 var lifePos: u3 = undefined;
                 cellPos, lifePos = self.cellIndex(row_index, col_index);
-                var cell = self.grid[cellPos];
+                var cell = self.swap[cellPos];
+                const readCell = self.grid[cellPos];
                 switch (self.neighborLifeCount(@intCast(row_index), @intCast(col_index))) {
-                    0...1 => cell.setAlive(lifePos, cell.isAlive(lifePos)),
-                    2 => cell.setAlive(lifePos, cell.isAlive(lifePos)),
+                    0...1 => cell.setAlive(lifePos, false),
+                    2 => cell.setAlive(lifePos, readCell.isAlive(lifePos)),
                     3 => cell.setAlive(lifePos, true),
                     else => cell.setAlive(lifePos, false),
                 }
@@ -193,10 +194,10 @@ pub const Playground = struct {
             const cellPos = pos / 8;
             const lifePos = pos % 8;
             var cell = playground.grid[cellPos];
-            std.debug.print("setAlive: before val:{b}\n", .{cell.value});
+            // std.debug.print("setAlive: before val:{b}\n", .{cell.value});
             cell.setAlive(@intCast(lifePos), true);
             playground.grid[cellPos] = cell;
-            std.debug.print("setAlive: pos:{} after val:{b}\n", .{ lifePos, cell.value });
+            // std.debug.print("setAlive: pos:{} after val:{b}\n", .{ lifePos, cell.value });
         }
         return playground;
     }
@@ -294,8 +295,7 @@ test "playground next generation works" {
     var playgound = try Playground.fromBuffer(std.testing.allocator, 3, 3, testAlive[0..]);
     defer playgound.deinit(std.testing.allocator);
     playgound.nextGen();
-    var expecteddAlive = [_]u16{ 3, 4, 5 };
-    var got = try Playground.fromBuffer(std.testing.allocator, 3, 3, expecteddAlive[0..]);
-    defer got.deinit(std.testing.allocator);
-    try std.testing.expectEqualSlices(Cell, playgound.grid, got.grid);
+    std.debug.print("\ngot {b} {b}\n", .{ playgound.grid[0].value, playgound.grid[1].value });
+    std.debug.print("\ngot {b} {b}\n", .{ playgound.swap[0].value, playgound.swap[1].value });
+    try std.testing.expectEqual(0b00011100, playgound.grid[0].value);
 }

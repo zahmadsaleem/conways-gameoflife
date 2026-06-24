@@ -3,41 +3,10 @@ const Io = std.Io;
 const assert = std.debug.assert;
 
 pub const Cell = struct {
-    value: u4 = 0b0000, // 4 generations, each bit holds a generations value, g4-g3-g2-g1
+    value: u1 = 0,
 
-    fn isAlive(self: *const Cell) bool {
-        return (self.value & 0b0001) == 0b0001;
-    }
-
-    fn isAliveInt(self: *const Cell) u4 {
-        return self.value & 0b0001;
-    }
-
-    fn setAliveTemp(self: *Cell, alive: bool) void {
-        if (!alive) {
-            self.value = (self.value << 1) & 0b1110;
-            return;
-        }
-        self.value = (self.value << 1) | 0b0001;
-    }
-
-    fn getGenerationLife(self: *const Cell, comptime gen: u2) bool {
-        const mask = 0b0001 << gen;
-        return ((self.value & mask) >> gen) == 0b0001;
-    }
-
-    fn age(self: *const Cell) u3 {
-        if (!self.isAlive()) {
-            return 0;
-        }
-        switch (self.value & 0b1111) {
-            0b0011 => return 2,
-            0b0111 => return 3,
-            0b1111 => return 4,
-            else => {
-                return 1;
-            },
-        }
+    fn setAlive(self: *Cell, alive: bool) void {
+        self.value = @intFromBool(alive);
     }
 };
 
@@ -59,27 +28,27 @@ pub const Playground = struct {
         const next_col = col + 1;
         if (row > 0) {
             if (col > 0) {
-                neighbors += self.grid[prev_row + prev_col].isAliveInt();
+                neighbors += self.grid[prev_row + prev_col].value;
             }
-            neighbors += self.grid[prev_row + col].isAliveInt();
+            neighbors += self.grid[prev_row + col].value;
             if (col < self.columns - 1) {
-                neighbors += self.grid[prev_row + next_col].isAliveInt();
+                neighbors += self.grid[prev_row + next_col].value;
             }
         }
 
         if (col > 0) {
-            neighbors += self.grid[current_row + prev_col].isAliveInt();
+            neighbors += self.grid[current_row + prev_col].value;
         }
         if (col < self.columns - 1) {
-            neighbors += self.grid[current_row + next_col].isAliveInt();
+            neighbors += self.grid[current_row + next_col].value;
         }
         if (row < self.rows - 1) {
             if (col > 0) {
-                neighbors += self.grid[next_row + prev_col].isAliveInt();
+                neighbors += self.grid[next_row + prev_col].value;
             }
-            neighbors += self.grid[next_row + col].isAliveInt();
+            neighbors += self.grid[next_row + col].value;
             if (col < self.columns - 1) {
-                neighbors += self.grid[next_row + next_col].isAliveInt();
+                neighbors += self.grid[next_row + next_col].value;
             }
         }
         return neighbors;
@@ -104,9 +73,9 @@ pub const Playground = struct {
             }
             for (0..self.columns) |col_index| {
                 const cell = self.grid[row_index * self.columns + col_index];
-                const display: u16 = switch (cell.isAlive()) {
-                    false => ' ',
-                    true => '\u{259f}',
+                const display: u16 = switch (cell.value) {
+                    0 => ' ',
+                    1 => '\u{259f}',
                 };
                 try writer.printUnicodeCodepoint(display);
             }
@@ -119,10 +88,10 @@ pub const Playground = struct {
             for (0..self.columns) |col_index| {
                 var cell = self.grid[self.cellIndex(row_index, col_index)];
                 switch (self.neighborLifeCount(@intCast(row_index), @intCast(col_index))) {
-                    0...1 => cell.setAliveTemp(false),
-                    2 => cell.setAliveTemp(cell.isAlive()),
-                    3 => cell.setAliveTemp(true),
-                    else => cell.setAliveTemp(false),
+                    0...1 => cell.setAlive(false),
+                    2 => {},
+                    3 => cell.setAlive(true),
+                    else => cell.setAlive(false),
                 }
                 self.swap[self.cellIndex(row_index, col_index)] = cell;
             }
@@ -169,7 +138,7 @@ pub const Playground = struct {
         return Playground{ .rows = rows, .columns = columns, .grid = grid, .swap = swap };
     }
 
-    pub fn fromBuffer(allocator: std.mem.Allocator, rows: u32, columns: u32, buff: []u4) !Playground {
+    pub fn fromBuffer(allocator: std.mem.Allocator, rows: u32, columns: u32, buff: []u1) !Playground {
         assert(buff.len == rows * columns);
         const playground = try Playground.new(allocator, rows, columns);
         for (0..rows * columns) |pos| {
@@ -184,43 +153,20 @@ pub const Playground = struct {
         var playground = try Playground.new(allocator, rows, columns);
         for (0..rows * columns) |i| {
             const mycellval = r.random().uintAtMost(u1, 1);
-            playground.grid[i] = Cell{ .value = @as(u4, mycellval) << 1 };
+            playground.grid[i] = Cell{ .value = mycellval };
         }
         return playground;
     }
 };
 
-test "cell value works" {
-    var cell = Cell{ .value = 0b1000 };
-    assert(!cell.isAlive());
-    assert(cell.isAliveInt() == 0);
-    assert(!cell.getGenerationLife(0));
-    assert(!cell.getGenerationLife(1));
-    assert(!cell.getGenerationLife(2));
-    assert(cell.getGenerationLife(3));
-    cell.setAliveTemp(true);
-    std.debug.print("setAliveTemp: cell value {b}\n", .{cell.value});
-    assert(cell.isAlive());
-    assert(cell.isAliveInt() == 1);
-    try std.testing.expectEqual(1, cell.age());
-    cell.setAliveTemp(true);
-    std.debug.print("setAliveTemp: cell value {b}\n", .{cell.value});
-    try std.testing.expectEqual(2, cell.age());
-    cell.setAliveTemp(false);
-    std.debug.print("setAliveTemp: cell value {b}\n", .{cell.value});
-    assert(!cell.isAlive());
-    try std.testing.expectEqual(cell.age(), 0);
-}
-
 test "playground neighbors works" {
-    var stable = [_]u4{
-        0b0000, 0b0001, 0b0000, // 0x0
-        0b0001, 0b0000, 0b0001, // x0x
-        0b0000, 0b0001, 0b0000, // 0x0
+    var stable = [_]u1{
+        0, 1, 0, // 0x0
+        1, 0, 1, // x0x
+        0, 1, 0, // 0x0
     };
-    const stableSlice: []u4 = stable[0..];
     // next generation should basically be the same
-    var playgound = try Playground.fromBuffer(std.testing.allocator, 3, 3, stableSlice);
+    var playgound = try Playground.fromBuffer(std.testing.allocator, 3, 3, stable[0..]);
     defer playgound.deinit(std.testing.allocator);
     try std.testing.expectEqual(2, playgound.neighborLifeCount(0, 0));
     try std.testing.expectEqual(2, playgound.neighborLifeCount(0, 1));
@@ -234,23 +180,22 @@ test "playground neighbors works" {
 }
 
 test "playground next generation works" {
-    var stable = [_]u4{
-        0b0000, 0b0001, 0b0000, // 0x0
-        0b0000, 0b0001, 0b0000, // 0x0
-        0b0000, 0b0001, 0b0000, // 0x0
+    var stable = [_]u1{
+        0, 1, 0, // 0x0
+        0, 1, 0, // 0x0
+        0, 1, 0, // 0x0
     };
-    const stableSlice: []u4 = stable[0..];
+    const stableSlice: []u1 = stable[0..];
     // next generation should basically be the same
     var playgound = try Playground.fromBuffer(std.testing.allocator, 3, 3, stableSlice);
     defer playgound.deinit(std.testing.allocator);
     playgound.nextGen();
-    var expected = [_]u4{
-        0b0000, 0b0000, 0b0000, // 000
-        0b0001, 0b0001, 0b0001, // xxx
-        0b0000, 0b0000, 0b0000, // 000
+    var expected = [_]u1{
+        0, 0, 0, // 000
+        1, 1, 1, // 111
+        0, 0, 0, // 000
     };
-    const expectedSlice: []u4 = expected[0..];
-    const got = try playgound.valueBuffer(std.testing.allocator, true);
-    defer std.testing.allocator.free(got);
-    try std.testing.expectEqualSlices(u4, expectedSlice, got);
+    var playgound2 = try Playground.fromBuffer(std.testing.allocator, 3, 3, expected[0..]);
+    defer playgound2.deinit(std.testing.allocator);
+    try std.testing.expectEqualSlices(Cell, playgound2.grid, playgound.grid);
 }

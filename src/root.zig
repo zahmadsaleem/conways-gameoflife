@@ -74,7 +74,7 @@ pub const Playground = struct {
         } else {
             // std.debug.print("\t\t", .{});
         }
-        std.debug.print("\t\t", .{});
+        // std.debug.print("\t\t", .{});
         if (col < self.columns - 1) {
             // std.debug.print("c4:{}\n", .{c4});
             neighbors += self.grid[c4[0]].isAliveInt(c4[1]);
@@ -180,7 +180,9 @@ pub const Playground = struct {
     }
 
     pub fn new(allocator: std.mem.Allocator, rows: u32, columns: u32) !Playground {
-        const numCells = if (rows * columns % 8 > 0) (rows * columns / 8) + 1 else (rows * columns / 8);
+        const numCells = if (((rows * columns / 8) * 8) < rows * columns) (rows * columns / 8) + 1 else (rows * columns / 8);
+        assert(numCells > 0);
+        assert(numCells >= (rows * columns / 8));
         const grid = try allocator.alloc(Cell, numCells);
         @memset(grid, Cell{ .value = 0 });
         const swap = try allocator.alloc(Cell, numCells);
@@ -207,9 +209,14 @@ pub const Playground = struct {
         var r = std.Random.DefaultPrng.init(@intCast(std.Io.Clock.real.now(io).toMilliseconds()));
 
         var playground = try Playground.new(allocator, rows, columns);
-        for (0..rows * columns) |i| {
-            const mycellval = r.random().uintAtMost(u1, 1);
-            playground.grid[i] = Cell{ .value = @as(u4, mycellval) << 1 };
+        for (0..playground.rows) |row_index| {
+            for (0..playground.columns) |col_index| {
+                const mycellval = r.random().uintAtMost(u1, 1);
+                const cellIdx = playground.cellIndex(row_index, col_index);
+                var cell = playground.grid[cellIdx[0]];
+                cell.setAlive(@intCast(cellIdx[1]), mycellval == 1);
+                playground.grid[cellIdx[0]] = cell;
+            }
         }
         return playground;
     }

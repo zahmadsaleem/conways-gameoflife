@@ -16,54 +16,22 @@ pub const Playground = struct {
     grid: []Cell,
     swap: []Cell = undefined,
 
-    fn neighborLifeCount(self: *const Playground, row: u32, col: u32) u4 {
+    fn neighborLifeCount(self: *const Playground, row: i64, col: i64) u4 {
         assert(self.rows > row);
         assert(self.columns > col);
         var neighbors: u4 = 0;
-
-        const prev_row = (row -| 1) * self.columns;
-        const current_row = row * self.columns;
-        const next_row = (row + 1) * self.columns;
-        const prev_col = col -| 1;
-        const next_col = col + 1;
-        if (row > 0) {
-            if (col > 0) {
-                neighbors += self.grid[prev_row + prev_col].value;
+        for ([_]struct { i64, i64 }{
+            .{ row - 1, col - 1 }, .{ row - 1, col },     .{ row - 1, col + 1 },
+            .{ row, col - 1 },     .{ row, col + 1 },     .{ row + 1, col - 1 },
+            .{ row + 1, col },     .{ row + 1, col + 1 },
+        }) |index| {
+            if (index[0] < 0 or index[1] < 0 or index[0] >= self.rows or index[1] >= self.columns) {
+                continue;
             }
-            neighbors += self.grid[prev_row + col].value;
-            if (col < self.columns - 1) {
-                neighbors += self.grid[prev_row + next_col].value;
-            }
-        }
-
-        if (col > 0) {
-            neighbors += self.grid[current_row + prev_col].value;
-        }
-        if (col < self.columns - 1) {
-            neighbors += self.grid[current_row + next_col].value;
-        }
-        if (row < self.rows - 1) {
-            if (col > 0) {
-                neighbors += self.grid[next_row + prev_col].value;
-            }
-            neighbors += self.grid[next_row + col].value;
-            if (col < self.columns - 1) {
-                neighbors += self.grid[next_row + next_col].value;
-            }
+            neighbors += self.grid[@intCast(index[0] * self.columns + index[1])].value;
+            if (neighbors > 3) break;
         }
         return neighbors;
-    }
-
-    fn size(self: *const Playground) usize {
-        return self.rows * self.columns;
-    }
-
-    pub fn valueBuffer(self: *const Playground, allocator: std.mem.Allocator, omit_history: bool) ![]u4 {
-        var buff = try allocator.alloc(u4, self.rows * self.columns);
-        for (0..self.size()) |i| {
-            buff[i] = if (omit_history) self.grid[i].value & 0b0001 else self.grid[i].value;
-        }
-        return buff;
     }
 
     pub fn print(self: *const Playground, writer: *std.Io.Writer) !void {

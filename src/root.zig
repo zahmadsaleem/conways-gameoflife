@@ -2,19 +2,11 @@ const std = @import("std");
 const Io = std.Io;
 const assert = std.debug.assert;
 
-pub const Cell = struct {
-    value: u1 = 0,
-
-    fn setAlive(self: *Cell, alive: bool) void {
-        self.value = @intFromBool(alive);
-    }
-};
-
 pub const Playground = struct {
     rows: u32,
     columns: u32,
-    grid: []Cell,
-    swap: []Cell = undefined,
+    grid: std.DynamicBitSet,
+    swap: std.DynamicBitSet,
 
     fn neighborLifeCount(self: *const Playground, row: i64, col: i64) u4 {
         assert(self.rows > row);
@@ -28,7 +20,8 @@ pub const Playground = struct {
             if (index[0] < 0 or index[1] < 0 or index[0] >= self.rows or index[1] >= self.columns) {
                 continue;
             }
-            neighbors += self.grid[@intCast(index[0] * self.columns + index[1])].value;
+            neighbors += @intFromBool(self.grid.isSet(@intCast(index[0] * self.columns + index[1])));
+
             if (neighbors > 3) break;
         }
         return neighbors;
@@ -40,10 +33,10 @@ pub const Playground = struct {
                 try writer.printAsciiChar('\n', std.fmt.Options{});
             }
             for (0..self.columns) |col_index| {
-                const cell = self.grid[row_index * self.columns + col_index];
-                const display: u16 = switch (cell.value) {
-                    0 => ' ',
-                    1 => '\u{259f}',
+                const cell = self.grid.isSet(row_index * self.columns + col_index);
+                const display: u16 = switch (cell) {
+                    false => ' ',
+                    true => '\u{259f}',
                 };
                 try writer.printUnicodeCodepoint(display);
             }
@@ -54,14 +47,12 @@ pub const Playground = struct {
     pub fn nextGen(self: *Playground) void {
         for (0..self.rows) |row_index| {
             for (0..self.columns) |col_index| {
-                var cell = self.grid[self.cellIndex(row_index, col_index)];
                 switch (self.neighborLifeCount(@intCast(row_index), @intCast(col_index))) {
-                    0...1 => cell.setAlive(false),
-                    2 => {},
-                    3 => cell.setAlive(true),
-                    else => cell.setAlive(false),
+                    0...1 => self.swap.unset(row_index * self.columns + col_index),
+                    2 => self.swap.setValue(row_index * self.columns + col_index, self.grid.isSet(row_index * self.columns + col_index)),
+                    3 => self.swap.set(row_index * self.columns + col_index),
+                    else => self.swap.unset(row_index * self.columns + col_index),
                 }
-                self.swap[self.cellIndex(row_index, col_index)] = cell;
             }
         }
         const temp = self.grid;
@@ -96,21 +87,22 @@ pub const Playground = struct {
     }
 
     pub fn deinit(self: *Playground, allocator: std.mem.Allocator) void {
-        allocator.free(self.grid);
-        allocator.free(self.swap);
+        _ = allocator;
+        self.grid.deinit();
+        self.swap.deinit();
     }
 
     pub fn new(allocator: std.mem.Allocator, rows: u32, columns: u32) !Playground {
-        const grid = try allocator.alloc(Cell, rows * columns);
-        const swap = try allocator.alloc(Cell, rows * columns);
+        const grid = try std.DynamicBitSet.initFull(allocator, rows * columns);
+        const swap = try std.DynamicBitSet.initFull(allocator, rows * columns);
         return Playground{ .rows = rows, .columns = columns, .grid = grid, .swap = swap };
     }
 
     pub fn fromBuffer(allocator: std.mem.Allocator, rows: u32, columns: u32, buff: []u1) !Playground {
         assert(buff.len == rows * columns);
-        const playground = try Playground.new(allocator, rows, columns);
+        var playground = try Playground.new(allocator, rows, columns);
         for (0..rows * columns) |pos| {
-            playground.grid[pos].value = buff[pos];
+            playground.grid.setValue(pos, buff[pos] == 1);
         }
         return playground;
     }
@@ -121,7 +113,7 @@ pub const Playground = struct {
         var playground = try Playground.new(allocator, rows, columns);
         for (0..rows * columns) |i| {
             const mycellval = r.random().uintAtMost(u1, 1);
-            playground.grid[i] = Cell{ .value = mycellval };
+            playground.grid.setValue(i, mycellval == 1);
         }
         return playground;
     }
@@ -165,5 +157,5 @@ test "playground next generation works" {
     };
     var playgound2 = try Playground.fromBuffer(std.testing.allocator, 3, 3, expected[0..]);
     defer playgound2.deinit(std.testing.allocator);
-    try std.testing.expectEqualSlices(Cell, playgound2.grid, playgound.grid);
+    assert(playgound2.grid.eql(playgound.grid));
 }

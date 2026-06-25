@@ -15,20 +15,51 @@ pub const Playground = struct {
     columns: u32,
     grid: []Cell,
     swap: []Cell = undefined,
+    neigborindex: [][]usize = undefined,
 
-    fn neighborLifeCount(self: *const Playground, row: i64, col: i64) u4 {
+    fn prepareNeighborIndex(self: *Playground, allocator: std.mem.Allocator) !void {
+        var map = try allocator.alloc([]usize, self.columns * self.rows);
+        var neigborlist = try std.ArrayList(usize).initCapacity(allocator, 8);
+        for (0..self.rows) |row_index| {
+            for (0..self.columns) |col_index| {
+                if (row_index > 0) {
+                    if (col_index > 0) {
+                        try neigborlist.append(allocator, self.columns * (row_index - 1) + col_index - 1);
+                    }
+                    try neigborlist.append(allocator, self.columns * (row_index - 1) + col_index);
+                    if (col_index < self.columns - 1) {
+                        try neigborlist.append(allocator, self.columns * (row_index - 1) + col_index + 1);
+                    }
+                }
+                if (col_index > 0) {
+                    try neigborlist.append(allocator, self.columns * (row_index) + col_index - 1);
+                }
+                if (col_index < self.columns - 1) {
+                    try neigborlist.append(allocator, self.columns * (row_index) + col_index + 1);
+                }
+                if (row_index < self.rows - 1) {
+                    if (col_index > 0) {
+                        try neigborlist.append(allocator, self.columns * (row_index + 1) + col_index - 1);
+                    }
+                    try neigborlist.append(allocator, self.columns * (row_index + 1) + col_index);
+                    if (col_index < self.columns - 1) {
+                        try neigborlist.append(allocator, self.columns * (row_index + 1) + col_index + 1);
+                    }
+                }
+                map[row_index * self.columns + col_index] = try neigborlist.toOwnedSlice(allocator);
+                neigborlist.clearRetainingCapacity();
+            }
+        }
+        self.neigborindex = map;
+    }
+
+    fn neighborLifeCount(self: *const Playground, row: usize, col: usize) u4 {
         assert(self.rows > row);
         assert(self.columns > col);
         var neighbors: u4 = 0;
-        for ([_]struct { i64, i64 }{
-            .{ row - 1, col - 1 }, .{ row - 1, col },     .{ row - 1, col + 1 },
-            .{ row, col - 1 },     .{ row, col + 1 },     .{ row + 1, col - 1 },
-            .{ row + 1, col },     .{ row + 1, col + 1 },
-        }) |index| {
-            if (index[0] < 0 or index[1] < 0 or index[0] >= self.rows or index[1] >= self.columns) {
-                continue;
-            }
-            neighbors += self.grid[@intCast(index[0] * self.columns + index[1])].value;
+        const indices = self.neigborindex[row * self.columns + col];
+        for (indices) |index| {
+            neighbors += self.grid[index].value;
             if (neighbors > 3) break;
         }
         return neighbors;
@@ -52,17 +83,24 @@ pub const Playground = struct {
     }
 
     pub fn nextGen(self: *Playground) void {
-        for (0..self.rows) |row_index| {
-            for (0..self.columns) |col_index| {
-                var cell = self.grid[self.cellIndex(row_index, col_index)];
-                switch (self.neighborLifeCount(@intCast(row_index), @intCast(col_index))) {
-                    0...1 => cell.setAlive(false),
-                    2 => {},
-                    3 => cell.setAlive(true),
-                    else => cell.setAlive(false),
+        var i: usize = 0;
+        for (self.neigborindex) |values| {
+            var neighbors: u3 = 0;
+            for (values) |index| {
+                neighbors += self.grid[index].value;
+                if (neighbors > 3) {
+                    break;
                 }
-                self.swap[self.cellIndex(row_index, col_index)] = cell;
             }
+            var cell = self.grid[i];
+            switch (neighbors) {
+                0...1 => cell.setAlive(false),
+                2 => {},
+                3 => cell.setAlive(true),
+                else => cell.setAlive(false),
+            }
+            self.swap[i] = cell;
+            i += 1;
         }
         const temp = self.grid;
         self.grid = self.swap;
@@ -98,12 +136,19 @@ pub const Playground = struct {
     pub fn deinit(self: *Playground, allocator: std.mem.Allocator) void {
         allocator.free(self.grid);
         allocator.free(self.swap);
+        for (self.neigborindex) |value| {
+            allocator.free(value);
+        }
+        allocator.free(self.neigborindex);
     }
 
     pub fn new(allocator: std.mem.Allocator, rows: u32, columns: u32) !Playground {
         const grid = try allocator.alloc(Cell, rows * columns);
         const swap = try allocator.alloc(Cell, rows * columns);
-        return Playground{ .rows = rows, .columns = columns, .grid = grid, .swap = swap };
+        var playground = Playground{ .rows = rows, .columns = columns, .grid = grid, .swap = swap };
+        try playground.prepareNeighborIndex(allocator);
+        // std.debug.print("neigbors #{any}\n", .{playground.neigborindex});
+        return playground;
     }
 
     pub fn fromBuffer(allocator: std.mem.Allocator, rows: u32, columns: u32, buff: []u1) !Playground {

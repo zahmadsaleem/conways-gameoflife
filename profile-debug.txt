@@ -1,81 +1,58 @@
-Analysis of sampling coglife (pid 80747) every 1 millisecond
-Process:         coglife [80747]
+Analysis of sampling coglife (pid 90760) every 1 millisecond
+Process:         coglife [90760]
 Path:            /Users/USER/*/coglife
-Load Address:    0x10023c000
+Load Address:    0x10480c000
 Identifier:      coglife
 Version:         0
 Code Type:       ARM64
 Platform:        macOS
-Parent Process:  zsh [80617]
+Parent Process:  zsh [80798]
 Target Type:     live task
 
-Date/Time:       2026-06-24 22:24:46.226 +0200
-Launch Time:     2026-06-24 22:24:43.763 +0200
+Date/Time:       2026-06-25 21:44:51.900 +0200
+Launch Time:     2026-06-25 21:44:46.189 +0200
 OS Version:      macOS 15.5 (24F74)
 Report Version:  7
 Analysis Tool:   /usr/bin/sample
 
-Physical footprint:         17.4M
-Physical footprint (peak):  17.4M
+Physical footprint:         652.9M
+Physical footprint (peak):  652.9M
 Idle exit:                  untracked
 ----
 
 Call graph:
-    4200 Thread_1443668   DispatchQueue_1: com.apple.main-thread  (serial)
-      4200 start  (in dyld) + 6076  [0x1975ceb98]
-        4200 main  (in coglife) + 1184  [0x10033b4c8]  start.zig:663
-          4200 main.main  (in coglife) + 852  [0x10033adf0]  main.zig:67
-            3629 root.Playground.nextGen  (in coglife) + 488  [0x10033ff58]  root.zig:58
-            + 1101 root.Playground.neighborLifeCount  (in coglife) + 1188,864,...  [0x10034101c,0x100340ed8,...]  root.zig:31
-            + 840 root.Playground.neighborLifeCount  (in coglife) + 940,992,...  [0x100340f24,0x100340f58,...]  root.zig:0
-            + 726 root.Playground.neighborLifeCount  (in coglife) + 768,780,...  [0x100340e78,0x100340e84,...]  root.zig:26
-            + 315 root.Playground.neighborLifeCount  (in coglife) + 824,944,...  [0x100340eb0,0x100340f28,...]  root.zig:28
-            + 258 root.Playground.neighborLifeCount  (in coglife) + 1248,1280,...  [0x100341058,0x100341078,...]  root.zig:32
-            + 106 root.Playground.neighborLifeCount  (in coglife) + 264,216,...  [0x100340c80,0x100340c50,...]  root.zig:24
-            + 68 root.Playground.neighborLifeCount  (in coglife) + 436,344,...  [0x100340d2c,0x100340cd0,...]  root.zig:25
-            + 50 root.Playground.neighborLifeCount  (in coglife) + 24,56,...  [0x100340b90,0x100340bb0,...]  root.zig:19
-            + 41 root.Playground.neighborLifeCount  (in coglife) + 724,704  [0x100340e4c,0x100340e38]  root.zig:34
-            + 30 root.Playground.neighborLifeCount  (in coglife) + 68,64  [0x100340bbc,0x100340bb8]  root.zig:20
-            + 27 root.Playground.neighborLifeCount  (in coglife) + 84  [0x100340bcc]  root.zig:20
-            + ! 17 debug.assert  (in coglife) + 36  [0x100240030]  debug.zig:420
-            + ! 10 debug.assert  (in coglife) + 24  [0x100240024]  debug.zig:418
-            + 27 root.Playground.neighborLifeCount  (in coglife) + 112  [0x100340be8]  root.zig:21
-            + ! 14 debug.assert  (in coglife) + 36  [0x100240030]  debug.zig:420
-            + ! 13 debug.assert  (in coglife) + 24  [0x100240024]  debug.zig:418
-            + 20 root.Playground.neighborLifeCount  (in coglife) + 836,792,...  [0x100340ebc,0x100340e90,...]  root.zig:33
-            + 18 root.Playground.neighborLifeCount  (in coglife) + 96,100  [0x100340bd8,0x100340bdc]  root.zig:21
-            + 2 debug.assert  (in coglife) + 44  [0x100240038]  debug.zig:420
-            134 root.Playground.nextGen  (in coglife) + 616,440,...  [0x10033ffd8,0x10033ff28,...]  root.zig:0
-            133 root.Playground.nextGen  (in coglife) + 612,388,...  [0x10033ffd4,0x10033fef4,...]  root.zig:58
-            74 root.Playground.nextGen  (in coglife) + 312  [0x10033fea8]  root.zig:57
-            + 73 root.Playground.cellIndex  (in coglife) + 60,128,...  [0x100341138,0x10034117c,...]  root.zig:73
-            + 1 root.Playground.cellIndex  (in coglife) + 28  [0x100341118]  root.zig:72
-            73 root.Playground.nextGen  (in coglife) + 572  [0x10033ffac]  root.zig:64
-            + 73 root.Playground.cellIndex  (in coglife) + 60,40,...  [0x100341138,0x100341124,...]  root.zig:73
-            42 root.Playground.nextGen  (in coglife) + 340,304  [0x10033fec4,0x10033fea0]  root.zig:57
-            34 root.Playground.nextGen  (in coglife) + 564,600,...  [0x10033ffa4,0x10033ffc8,...]  root.zig:64
-            21 root.Playground.nextGen  (in coglife) + 660  [0x100340004]  root.zig:59
-            + 21 root.Cell.setAlive  (in coglife) + 56  [0x100340254]  root.zig:9
-            18 root.Playground.nextGen  (in coglife) + 248  [0x10033fe68]  root.zig:56
-            18 root.Playground.nextGen  (in coglife) + 272  [0x10033fe80]  root.zig:65
-            14 root.Playground.neighborLifeCount  (in coglife) + 756  [0x100340e6c]  root.zig:34
-            5 root.Playground.nextGen  (in coglife) + 636  [0x10033ffec]  root.zig:61
-            + 5 root.Cell.setAlive  (in coglife) + 56  [0x100340254]  root.zig:9
-            4 root.Playground.nextGen  (in coglife) + 684  [0x10034001c]  root.zig:62
-            + 4 root.Cell.setAlive  (in coglife) + 56  [0x100340254]  root.zig:9
-            1 root.Playground.nextGen  (in coglife) + 680  [0x100340018]  root.zig:62
+    4222 Thread_1620924   DispatchQueue_1: com.apple.main-thread  (serial)
+      4222 start  (in dyld) + 6076  [0x1975ceb98]
+        4222 main  (in coglife) + 1184  [0x10490c2b4]  start.zig:663
+          4222 main.main  (in coglife) + 852  [0x10490bbdc]  main.zig:67
+            1414 root.Playground.nextGen  (in coglife) + 420,468,...  [0x104910d00,0x104910d30,...]  root.zig:90
+            1052 root.Playground.nextGen  (in coglife) + 336,332,...  [0x104910cac,0x104910ca8,...]  root.zig:89
+            579 root.Playground.nextGen  (in coglife) + 720,600,...  [0x104910e2c,0x104910db4,...]  root.zig:96
+            312 root.Playground.nextGen  (in coglife) + 528,548,...  [0x104910d6c,0x104910d80,...]  root.zig:91
+            261 root.Playground.nextGen  (in coglife) + 560  [0x104910d8c]  root.zig:92
+            213 root.Playground.nextGen  (in coglife) + 724,796,...  [0x104910e30,0x104910e78,...]  root.zig:0
+            89 root.Playground.nextGen  (in coglife) + 888,884,...  [0x104910ed4,0x104910ed0,...]  root.zig:103
+            71 root.Playground.nextGen  (in coglife) + 316,312,...  [0x104910c98,0x104910c94,...]  root.zig:95
+            68 root.Playground.nextGen  (in coglife) + 192,256,...  [0x104910c1c,0x104910c5c,...]  root.zig:87
+            67 root.Playground.nextGen  (in coglife) + 708,704,...  [0x104910e20,0x104910e1c,...]  root.zig:102
+            41 root.Playground.nextGen  (in coglife) + 768  [0x104910e5c]  root.zig:97
+            + 41 root.Cell.setAlive  (in coglife) + 56  [0x1049110d4]  root.zig:9
+            20 root.Playground.nextGen  (in coglife) + 268  [0x104910c68]  root.zig:88
+            14 root.Playground.nextGen  (in coglife) + 744  [0x104910e44]  root.zig:99
+            + 14 root.Cell.setAlive  (in coglife) + 56  [0x1049110d4]  root.zig:9
+            11 root.Playground.nextGen  (in coglife) + 792  [0x104910e74]  root.zig:100
+            + 11 root.Cell.setAlive  (in coglife) + 56  [0x1049110d4]  root.zig:9
+            7 root.Cell.setAlive  (in coglife) + 60  [0x1049110d8]  root.zig:9
+            3 root.Playground.nextGen  (in coglife) + 776  [0x104910e64]  root.zig:100
 
 Total number in stack (recursive counted multiple, when >=5):
 
 Sort by top of stack, same collapsed (when >= 5):
-        root.Playground.neighborLifeCount  (in coglife)        3587
-        root.Playground.nextGen  (in coglife)        380
-        root.Playground.cellIndex  (in coglife)        147
-        debug.assert  (in coglife)        56
-        root.Cell.setAlive  (in coglife)        30
+        root.Playground.nextGen  (in coglife)        4149
+        root.Cell.setAlive  (in coglife)        73
 
 Binary Images:
-       0x10023c000 -        0x1003ba1e3 +coglife (0) <9E9983E4-A76E-3D0B-A252-E941C9B8D73A> /Users/*/coglife
+       0x10480c000 -        0x10498c4a3 +coglife (0) <86E5B2D0-C7D2-3DD0-A066-17C5A2EA2E7A> /Users/*/coglife
        0x197574000 -        0x1975c7893  libobjc.A.dylib (940.4) <4966864D-C147-33D3-BB18-1E3979590B6D> /usr/lib/libobjc.A.dylib
        0x1975c8000 -        0x1976634cf  dyld (1.0.0 - 1285.19) <9CF0401A-A938-389E-A77D-9E9608076CCF> /usr/lib/dyld
        0x197664000 -        0x197667168  libsystem_blocks.dylib (96) <4740F383-F4C0-328E-8753-41E8982EC94A> /usr/lib/system/libsystem_blocks.dylib

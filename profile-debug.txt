@@ -1,0 +1,127 @@
+Analysis of sampling coglife (pid 97116) every 1 millisecond
+Process:         coglife [97116]
+Path:            /Users/USER/*/coglife
+Load Address:    0x102d2c000
+Identifier:      coglife
+Version:         0
+Code Type:       ARM64
+Platform:        macOS
+Parent Process:  zsh [80798]
+Target Type:     live task
+
+Date/Time:       2026-06-26 17:42:09.039 +0200
+Launch Time:     2026-06-26 17:42:04.932 +0200
+OS Version:      macOS 15.5 (24F74)
+Report Version:  7
+Analysis Tool:   /usr/bin/sample
+
+Physical footprint:         17.4M
+Physical footprint (peak):  17.4M
+Idle exit:                  untracked
+----
+
+Call graph:
+    4199 Thread_1755491   DispatchQueue_1: com.apple.main-thread  (serial)
+      4199 start  (in dyld) + 6076  [0x1975ceb98]
+        4199 main  (in coglife) + 1184  [0x102e2b4c8]  start.zig:663
+          4199 main.main  (in coglife) + 852  [0x102e2adf0]  main.zig:67
+            2842 root.Playground.nextGen  (in coglife) + 500  [0x102e2ff64]  root.zig:62
+            + 398 root.Playground.neighborLifeCount  (in coglife) + 2712,2648,...  [0x102e3161c,0x102e315dc,...]  root.zig:34
+            + 308 root.Playground.neighborLifeCount  (in coglife) + 1988,2240,...  [0x102e31348,0x102e31444,...]  root.zig:32
+            + 307 root.Playground.neighborLifeCount  (in coglife) + 3496,3220,...  [0x102e3192c,0x102e31818,...]  root.zig:36
+            + 286 root.Playground.neighborLifeCount  (in coglife) + 1612,1916,...  [0x102e311d0,0x102e31300,...]  root.zig:31
+            + 280 root.Playground.neighborLifeCount  (in coglife) + 1488,1424,...  [0x102e31154,0x102e31114,...]  root.zig:29
+            + 275 root.Playground.neighborLifeCount  (in coglife) + 640,300,...  [0x102e30e04,0x102e30cb0,...]  root.zig:27
+            + 269 root.Playground.neighborLifeCount  (in coglife) + 3088,2884,...  [0x102e31794,0x102e316c8,...]  root.zig:35
+            + 249 root.Playground.neighborLifeCount  (in coglife) + 148,512,...  [0x102e30c18,0x102e30d84,...]  root.zig:0
+            + 167 root.Playground.neighborLifeCount  (in coglife) + 772,812,...  [0x102e30e88,0x102e30eb0,...]  root.zig:28
+            + 67 root.Playground.neighborLifeCount  (in coglife) + 52,72,...  [0x102e30bb8,0x102e30bcc,...]  root.zig:20
+            + 56 root.Playground.neighborLifeCount  (in coglife) + 196,200  [0x102e30c48,0x102e30c4c]  root.zig:25
+            + 36 root.Playground.neighborLifeCount  (in coglife) + 68  [0x102e30bc8]  root.zig:20
+            + ! 20 debug.assert  (in coglife) + 24  [0x102d30024]  debug.zig:418
+            + ! 16 debug.assert  (in coglife) + 36  [0x102d30030]  debug.zig:420
+            + 34 root.Playground.neighborLifeCount  (in coglife) + 96  [0x102e30be4]  root.zig:21
+            + ! 22 debug.assert  (in coglife) + 36  [0x102d30030]  debug.zig:420
+            + ! 12 debug.assert  (in coglife) + 24  [0x102d30024]  debug.zig:418
+            + 33 root.Playground.neighborLifeCount  (in coglife) + 80,76,...  [0x102e30bd4,0x102e30bd0,...]  root.zig:21
+            + 26 root.Playground.neighborLifeCount  (in coglife) + 120,124,...  [0x102e30bfc,0x102e30c00,...]  root.zig:23
+            + 23 root.Playground.neighborLifeCount  (in coglife) + 3648  [0x102e319c4]  root.zig:38
+            + 20 root.Playground.neighborLifeCount  (in coglife) + 44,36,...  [0x102e30bb0,0x102e30ba8,...]  root.zig:19
+            + 8 debug.assert  (in coglife) + 44,40  [0x102d30038,0x102d30034]  debug.zig:420
+            496 root.Playground.nextGen  (in coglife) + 624,752,...  [0x102e2ffe0,0x102e30060,...]  root.zig:62
+            344 root.Playground.nextGen  (in coglife) + 628,488,...  [0x102e2ffe4,0x102e2ff58,...]  root.zig:0
+            146 root.Playground.nextGen  (in coglife) + 584  [0x102e2ffb8]  root.zig:68
+            + 118 root.Playground.cellIndex  (in coglife) + 60,100,...  [0x102e31aa8,0x102e31ad0,...]  root.zig:77
+            + 17 root.Playground.cellIndex  (in coglife) + 124,88  [0x102e31ae8,0x102e31ac4]  root.zig:0
+            + 11 root.Playground.cellIndex  (in coglife) + 32,28,...  [0x102e31a8c,0x102e31a88,...]  root.zig:76
+            114 root.Playground.nextGen  (in coglife) + 312  [0x102e2fea8]  root.zig:61
+            + 104 root.Playground.cellIndex  (in coglife) + 60,100,...  [0x102e31aa8,0x102e31ad0,...]  root.zig:77
+            + 10 root.Playground.cellIndex  (in coglife) + 28,36  [0x102e31a88,0x102e31a90]  root.zig:76
+            72 root.Playground.nextGen  (in coglife) + 576,768,...  [0x102e2ffb0,0x102e30070,...]  root.zig:68
+            62 root.Playground.nextGen  (in coglife) + 304,340,...  [0x102e2fea0,0x102e2fec4,...]  root.zig:61
+            56 root.Playground.nextGen  (in coglife) + 248,244,...  [0x102e2fe68,0x102e2fe64,...]  root.zig:60
+            16 root.Playground.nextGen  (in coglife) + 672  [0x102e30010]  root.zig:63
+            + 16 root.Cell.setAlive  (in coglife) + 56  [0x102e30260]  root.zig:9
+            15 root.Playground.nextGen  (in coglife) + 648  [0x102e2fff8]  root.zig:65
+            + 15 root.Cell.setAlive  (in coglife) + 56  [0x102e30260]  root.zig:9
+            12 root.Playground.neighborLifeCount  (in coglife) + 3684  [0x102e319e8]  root.zig:38
+            10 root.Playground.nextGen  (in coglife) + 272  [0x102e2fe80]  root.zig:69
+            8 root.Playground.nextGen  (in coglife) + 696  [0x102e30028]  root.zig:66
+            + 8 root.Cell.setAlive  (in coglife) + 56  [0x102e30260]  root.zig:9
+            6 root.Playground.cellIndex  (in coglife) + 132,136  [0x102e31af0,0x102e31af4]  root.zig:77
+
+Total number in stack (recursive counted multiple, when >=5):
+
+Sort by top of stack, same collapsed (when >= 5):
+        root.Playground.neighborLifeCount  (in coglife)        2776
+        root.Playground.nextGen  (in coglife)        1040
+        root.Playground.cellIndex  (in coglife)        266
+        debug.assert  (in coglife)        78
+        root.Cell.setAlive  (in coglife)        39
+
+Binary Images:
+       0x102d2c000 -        0x102eaab53 +coglife (0) <101AADDB-8350-3F57-9EB3-723C2CA0B881> /Users/*/coglife
+       0x197574000 -        0x1975c7893  libobjc.A.dylib (940.4) <4966864D-C147-33D3-BB18-1E3979590B6D> /usr/lib/libobjc.A.dylib
+       0x1975c8000 -        0x1976634cf  dyld (1.0.0 - 1285.19) <9CF0401A-A938-389E-A77D-9E9608076CCF> /usr/lib/dyld
+       0x197664000 -        0x197667168  libsystem_blocks.dylib (96) <4740F383-F4C0-328E-8753-41E8982EC94A> /usr/lib/system/libsystem_blocks.dylib
+       0x197668000 -        0x1976b28ff  libxpc.dylib (2894.121.3) <3B8AE373-80D2-36A4-A628-0CF6CF083703> /usr/lib/system/libxpc.dylib
+       0x1976b3000 -        0x1976ce7ff  libsystem_trace.dylib (1643.120.5) <C8ED43C4-C077-34E9-AB26-F34231C895BE> /usr/lib/system/libsystem_trace.dylib
+       0x1976cf000 -        0x19776d4b7  libcorecrypto.dylib (1736.120.5) <7EFCF3FE-36A2-3423-BA6A-CD23D0697006> /usr/lib/system/libcorecrypto.dylib
+       0x19776e000 -        0x1977b4fef  libsystem_malloc.dylib (715.120.13) <E2C4CBE4-6195-3328-B87C-2DFA4A6AD039> /usr/lib/system/libsystem_malloc.dylib
+       0x1977b5000 -        0x1977fb73f  libdispatch.dylib (1521.120.4) <8BF83CDA-8DB1-3D46-94B0-D811BD77E078> /usr/lib/system/libdispatch.dylib
+       0x1977fc000 -        0x1977fed1b  libsystem_featureflags.dylib (97) <05344457-BD89-3B9D-89E2-5A6B3DE3F8B0> /usr/lib/system/libsystem_featureflags.dylib
+       0x1977ff000 -        0x19788046f  libsystem_c.dylib (1698.100.8) <F4529D5E-24F3-3BBB-BD3C-984856875FC8> /usr/lib/system/libsystem_c.dylib
+       0x197881000 -        0x19790dff7  libc++.1.dylib (1900.180) <875203A1-087B-33A6-93A5-928BB7E9114C> /usr/lib/libc++.1.dylib
+       0x19790e000 -        0x19792bfff  libc++abi.dylib (1900.180) <4DB4AC5C-E091-3A2E-A149-B7955B8AF852> /usr/lib/libc++abi.dylib
+       0x19792c000 -        0x197967653  libsystem_kernel.dylib (11417.121.6) <60485B6F-67E5-38C1-AEC9-EFD6031FF166> /usr/lib/system/libsystem_kernel.dylib
+       0x197968000 -        0x197974a47  libsystem_pthread.dylib (536) <647B91FC-96D3-3BBB-AF08-970DF45257C8> /usr/lib/system/libsystem_pthread.dylib
+       0x197975000 -        0x1979a4ba3  libdyld.dylib (1285.19) <C62596FE-63C5-3502-BBD1-14147A7CA921> /usr/lib/system/libdyld.dylib
+       0x1979a5000 -        0x1979acb4f  libsystem_platform.dylib (349) <519F3220-7499-334A-96D6-CCF3DC28F986> /usr/lib/system/libsystem_platform.dylib
+       0x1979ad000 -        0x1979dc6f7  libsystem_info.dylib (597) <33D79A98-6726-3AE0-8D55-4EDD853ABC71> /usr/lib/system/libsystem_info.dylib
+       0x19b476000 -        0x19b480387  libsystem_darwin.dylib (1698.100.8) <106CE5FD-0965-3702-ADE3-B5641ACE0234> /usr/lib/system/libsystem_darwin.dylib
+       0x19b8d8000 -        0x19b8e9feb  libsystem_notify.dylib (342) <45949DA9-086F-3E8C-9C8F-25B76BE65AEF> /usr/lib/system/libsystem_notify.dylib
+       0x19d8dd000 -        0x19d8f7e8f  libsystem_networkextension.dylib (2063.120.19) <F8BFD14F-1B36-3492-8DD3-7300D44A13CC> /usr/lib/system/libsystem_networkextension.dylib
+       0x19d974000 -        0x19d98bfdb  libsystem_asl.dylib (402) <D6F3BCA9-3E5E-39BF-AB7B-EB88587ADC57> /usr/lib/system/libsystem_asl.dylib
+       0x19f4ce000 -        0x19f4d63a7  libsystem_symptoms.dylib (2022.120.2) <E19D8302-3CFC-3767-99BB-C1B2930163E7> /usr/lib/system/libsystem_symptoms.dylib
+       0x1a2d0b000 -        0x1a2d3b38f  libsystem_containermanager.dylib (689.100.6) <12FA61D3-0D2D-3205-B55D-D84717CC2817> /usr/lib/system/libsystem_containermanager.dylib
+       0x1a3f70000 -        0x1a3f745df  libsystem_configuration.dylib (1351.120.3) <A9CC0F35-6BB6-3E73-8496-8F14D7AC6F24> /usr/lib/system/libsystem_configuration.dylib
+       0x1a3f75000 -        0x1a3f7b47f  libsystem_sandbox.dylib (2401.121.3) <99E69314-53F0-3D91-A3C0-CF0DA7BAE494> /usr/lib/system/libsystem_sandbox.dylib
+       0x1a4f7c000 -        0x1a4f7efe3  libquarantine.dylib (181.120.2) <EC0732A5-DAEE-37B9-B705-F6BF5AC6DA24> /usr/lib/system/libquarantine.dylib
+       0x1a568c000 -        0x1a56927a3  libsystem_coreservices.dylib (178) <4A9BA38A-4D47-3713-A839-DA773D8A8B54> /usr/lib/system/libsystem_coreservices.dylib
+       0x1a5b0a000 -        0x1a5b472b7  libsystem_m.dylib (3291.100.4) <F3A77909-62A9-3E86-9C40-4F0DE713F490> /usr/lib/system/libsystem_m.dylib
+       0x1a5b49000 -        0x1a5b4c4e7  libmacho.dylib (1024.3) <4EAD3AF2-CDB9-376A-9A67-6F0037E60D1D> /usr/lib/system/libmacho.dylib
+       0x1a5b66000 -        0x1a5b735ef  libcommonCrypto.dylib (600035) <A40B703D-F173-391D-9AC6-910F78158DA5> /usr/lib/system/libcommonCrypto.dylib
+       0x1a5b74000 -        0x1a5b7dad7  libunwind.dylib (1900.125) <0E7B8D5B-31BA-3BE8-BF25-E10666EDE277> /usr/lib/system/libunwind.dylib
+       0x1a5b86000 -        0x1a5b905bf  libcopyfile.dylib (221.121.1) <46F69CD7-7F96-371B-8296-568D482A6411> /usr/lib/system/libcopyfile.dylib
+       0x1a5b91000 -        0x1a5b9498f  libcompiler_rt.dylib (103.3) <AF97F2CC-03A4-31F0-8C72-587BEFB97632> /usr/lib/system/libcompiler_rt.dylib
+       0x1a5b95000 -        0x1a5b99a1b  libsystem_collections.dylib (1698.100.8) <03421A5A-565F-39F2-B27E-15EBB24AF62D> /usr/lib/system/libsystem_collections.dylib
+       0x1a5b9a000 -        0x1a5b9d2c7  libsystem_secinit.dylib (153.100.10) <9EAF2187-33C8-3FFD-8B01-6EB7C76891EB> /usr/lib/system/libsystem_secinit.dylib
+       0x1a5b9e000 -        0x1a5ba0b6f  libremovefile.dylib (81) <DB9BEFA1-2FB7-3082-8733-97D3322278AA> /usr/lib/system/libremovefile.dylib
+       0x1a5ba1000 -        0x1a5ba1f27  libkeymgr.dylib (31) <0C24AE24-7B28-3C0A-A6F9-42B21C3D4408> /usr/lib/system/libkeymgr.dylib
+       0x1a5ba2000 -        0x1a5baad57  libsystem_dnssd.dylib (2600.120.12) <82C69999-6EDE-35A7-A08E-79714AA45517> /usr/lib/system/libsystem_dnssd.dylib
+       0x1a5bab000 -        0x1a5bb00b3  libcache.dylib (95) <ACCBADB6-3349-3020-9E59-BED2AA2DB0B1> /usr/lib/system/libcache.dylib
+       0x1a5bb1000 -        0x1a5bb2ca3  libSystem.B.dylib (1351) <F7E5BDDC-FB12-33EF-921F-C93FEF0D41D7> /usr/lib/libSystem.B.dylib
+       0x27f605000 -        0x27f60c109  libRosetta.dylib (349) <EEB10206-44AA-3304-B4BA-1EE3D29854AF> /usr/lib/libRosetta.dylib
+       0x280a2d000 -        0x280a30deb  libsystem_darwindirectory.dylib (122) <135AA8DB-7980-3926-836B-62CB50A06836> /usr/lib/system/libsystem_darwindirectory.dylib
+       0x280a31000 -        0x280a38523  libsystem_eligibility.dylib (181.120.32) <8D8AD9B1-529A-3879-AC11-B670974F0C18> /usr/lib/system/libsystem_eligibility.dylib
+       0x280a39000 -        0x280a3e6c5  libsystem_sanitizers.dylib (19) <2C6BF94B-EB62-3C05-AC78-55FD05EEA166> /usr/lib/system/libsystem_sanitizers.dylib

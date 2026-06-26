@@ -24,16 +24,16 @@ pub const Playground = struct {
         const has_prev_col: u32 = @intFromBool(col > 0);
         const has_next_col: u32 = @intFromBool(col + 1 < self.columns);
         var neighbors: u32 = 0;
-        neighbors += self.grid[((row -| 1) * self.columns + col -| 1) * (has_prev_row & has_prev_col)].value * (has_prev_row & has_prev_col);
-        neighbors += self.grid[((row -| 1) * self.columns + col) * (has_prev_row)].value * (has_prev_row);
-        neighbors += self.grid[((row -| 1) * self.columns + col + 1) * (has_prev_row & has_next_col)].value * (has_prev_row & has_next_col);
+        neighbors += self.grid[(row - 1 * has_prev_row) * self.columns + col - 1 * has_prev_col].value * (has_prev_row & has_prev_col);
+        neighbors += self.grid[(row - 1 * has_prev_row) * self.columns + col].value * has_prev_row;
+        neighbors += self.grid[(row - 1 * has_prev_row) * self.columns + col + 1 * has_next_col].value * (has_prev_row & has_next_col);
 
-        neighbors += self.grid[((row) * self.columns + col -| 1) * (has_prev_col)].value * (has_prev_col);
-        neighbors += self.grid[((row) * self.columns + col + 1) * (has_next_col)].value * (has_next_col);
+        neighbors += self.grid[row * self.columns + col - 1 * has_prev_col].value * has_prev_col;
+        neighbors += self.grid[row * self.columns + col + 1 * has_next_col].value * has_next_col;
 
-        neighbors += self.grid[((row + 1) * self.columns + col -| 1) * (has_next_row & has_prev_col)].value * (has_next_row & has_prev_col);
-        neighbors += self.grid[((row + 1) * self.columns + col) * (has_next_row)].value * (has_next_row);
-        neighbors += self.grid[((row + 1) * self.columns + col + 1) * (has_next_row & has_next_col)].value * (has_next_row & has_next_col);
+        neighbors += self.grid[(row + 1 * has_next_row) * self.columns + col - 1 * has_prev_col].value * (has_next_row & has_prev_col);
+        neighbors += self.grid[(row + 1 * has_next_row) * self.columns + col].value * has_next_row;
+        neighbors += self.grid[(row + 1 * has_next_row) * self.columns + col + 1 * has_next_col].value * (has_next_row & has_next_col);
 
         return @intCast(neighbors);
     }

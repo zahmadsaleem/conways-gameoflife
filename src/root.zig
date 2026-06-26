@@ -16,22 +16,26 @@ pub const Playground = struct {
     grid: []Cell,
     swap: []Cell = undefined,
 
-    fn neighborLifeCount(self: *const Playground, row: i64, col: i64) u4 {
+    fn neighborLifeCount(self: *const Playground, row: u32, col: u32) u4 {
         assert(self.rows > row);
         assert(self.columns > col);
-        var neighbors: u4 = 0;
-        for ([_]struct { i64, i64 }{
-            .{ row - 1, col - 1 }, .{ row - 1, col },     .{ row - 1, col + 1 },
-            .{ row, col - 1 },     .{ row, col + 1 },     .{ row + 1, col - 1 },
-            .{ row + 1, col },     .{ row + 1, col + 1 },
-        }) |index| {
-            if (index[0] < 0 or index[1] < 0 or index[0] >= self.rows or index[1] >= self.columns) {
-                continue;
-            }
-            neighbors += self.grid[@intCast(index[0] * self.columns + index[1])].value;
-            if (neighbors > 3) break;
-        }
-        return neighbors;
+        const has_prev_row: u32 = @intFromBool(row > 0);
+        const has_next_row: u32 = @intFromBool(row + 1 < self.rows);
+        const has_prev_col: u32 = @intFromBool(col > 0);
+        const has_next_col: u32 = @intFromBool(col + 1 < self.columns);
+        var neighbors: u32 = 0;
+        neighbors += self.grid[((row -| 1) * self.columns + col -| 1) * (has_prev_row & has_prev_col)].value * (has_prev_row & has_prev_col);
+        neighbors += self.grid[((row -| 1) * self.columns + col) * (has_prev_row)].value * (has_prev_row);
+        neighbors += self.grid[((row -| 1) * self.columns + col + 1) * (has_prev_row & has_next_col)].value * (has_prev_row & has_next_col);
+
+        neighbors += self.grid[((row) * self.columns + col -| 1) * (has_prev_col)].value * (has_prev_col);
+        neighbors += self.grid[((row) * self.columns + col + 1) * (has_next_col)].value * (has_next_col);
+
+        neighbors += self.grid[((row + 1) * self.columns + col -| 1) * (has_next_row & has_prev_col)].value * (has_next_row & has_prev_col);
+        neighbors += self.grid[((row + 1) * self.columns + col) * (has_next_row)].value * (has_next_row);
+        neighbors += self.grid[((row + 1) * self.columns + col + 1) * (has_next_row & has_next_col)].value * (has_next_row & has_next_col);
+
+        return @intCast(neighbors);
     }
 
     pub fn print(self: *const Playground, writer: *std.Io.Writer) !void {

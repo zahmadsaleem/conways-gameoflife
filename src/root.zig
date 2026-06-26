@@ -40,19 +40,16 @@ pub const Playground = struct {
 
     pub fn print(self: *const Playground, writer: *std.Io.Writer) !void {
         for (0..self.rows) |row_index| {
-            if (row_index > 0) {
-                try writer.printAsciiChar('\n', std.fmt.Options{});
-            }
             for (0..self.columns) |col_index| {
                 const cell = self.grid[row_index * self.columns + col_index];
                 const display: u16 = switch (cell.value) {
                     0 => ' ',
-                    1 => '\u{259f}',
+                    1 => '\u{2593}',
                 };
                 try writer.printUnicodeCodepoint(display);
             }
+            try writer.printAsciiChar('\n', std.fmt.Options{});
         }
-        try writer.printAsciiChar('\n', std.fmt.Options{});
     }
 
     pub fn nextGen(self: *Playground) void {

@@ -114,7 +114,3 @@ export fn playground_nextgen() usize {
     global_playground.nextGen();
     return @intFromPtr(global_playground.grid.ptr);
 }
-
-fn playgroundFromPtr(ptr: usize) *lib.Playground {
-    return @ptrFromInt(ptr);
-}

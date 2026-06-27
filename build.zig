@@ -4,7 +4,7 @@ pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
-    const mod = b.addModule("conways_gameoflife", .{
+    const mod = b.addModule("lib_coglife", .{
         .root_source_file = b.path("src/root.zig"),
         .target = target,
     });
@@ -17,7 +17,7 @@ pub fn build(b: *std.Build) void {
             .target = target,
             .optimize = optimize,
             .imports = &.{
-                .{ .name = "conways_gameoflife", .module = mod },
+                .{ .name = "lib_coglife", .module = mod },
             },
         }),
     });
@@ -50,4 +50,29 @@ pub fn build(b: *std.Build) void {
     const test_step = b.step("test", "Run tests");
     test_step.dependOn(&run_mod_tests.step);
     test_step.dependOn(&run_exe_tests.step);
+    const wasm_target = b.resolveTargetQuery(.{
+        .cpu_arch = .wasm32,
+        .os_tag = .freestanding,
+    });
+    const wasm = b.addExecutable(.{
+        .name = "coglife_wasm",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/wasm.zig"),
+            .target = wasm_target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "lib", .module = mod },
+            },
+        }),
+    });
+
+    wasm.entry = .disabled;
+    wasm.root_module.export_symbol_names = &[_][]const u8{
+        "playground_init",
+        "playground_destroy",
+        // "alloc",
+        // "free",
+        // "host_log",
+    };
+    b.installArtifact(wasm);
 }

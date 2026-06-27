@@ -1,7 +1,7 @@
 const std = @import("std");
 const Io = std.Io;
 const assert = std.debug.assert;
-const game = @import("conways_gameoflife");
+const game = @import("lib_coglife");
 
 const CliContext = struct {
     rows: u16 = 25,

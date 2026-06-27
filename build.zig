@@ -22,7 +22,19 @@ pub fn build(b: *std.Build) void {
         }),
     });
 
-    b.installArtifact(exe);
+    // TODO: webgpu engine for neigbor calc
+
+    // https://github.com/zig-gamedev/zgpu#getting-started
+    // const zgpu = b.dependency("zgpu", .{});
+    // exe.root_module.addImport("zgpu", zgpu.module("root"));
+    //
+    // // Adds platform-specific library search paths and links the
+    // // prebuilt dawn library to the executable.
+    // @import("zgpu").addLibraryPathsTo(exe);
+    //
+    // // Link the zdawn C/C++ wrapper artifact.
+    // // exe.linkLibrary(zgpu.artifact("zdawn"));
+    // b.installArtifact(exe);
 
     const run_step = b.step("run", "Run the app");
 
@@ -70,9 +82,13 @@ pub fn build(b: *std.Build) void {
     wasm.root_module.export_symbol_names = &[_][]const u8{
         "playground_init",
         "playground_destroy",
-        // "alloc",
-        // "free",
-        // "host_log",
+        "playground_grid",
+        "playground_nextgen",
+        "alloc_u8",
+        "free_u8",
+        "last_error_message_ptr",
+        "last_error_message_len",
+        "last_error_code",
     };
     b.installArtifact(wasm);
 }

@@ -1,3 +1,4 @@
+const std = @import("std");
 const allocator = @import("std").heap.wasm_allocator;
 const lib = @import("lib");
 
@@ -66,21 +67,52 @@ export fn last_error_message_len() usize {
     return last_msg.len;
 }
 
-export fn playground_init(rows: u32, cols: u32) usize {
-    const ptr = lib.Playground.new(allocator, rows, cols) catch |err| {
+export fn alloc_u8(len: usize) usize {
+    const buff = allocator.alloc(u8, len) catch |err| {
         return fail(err);
     };
-    return @intFromPtr(&ptr);
+    return @intFromPtr(&buff);
 }
 
-export fn playground_destroy(ptr: usize) void {
-    var playground: *lib.Playground = @ptrFromInt(ptr);
-    playground.deinit(allocator);
+export fn free_u8(ptr_addr: usize, len: usize) void {
+    const ptr: [*]u8 = @ptrFromInt(ptr_addr);
+    allocator.free(ptr[0..len]);
 }
 
-export fn playground_nextgen(ptr: usize) usize {
-    var playground: *lib.Playground = @ptrFromInt(ptr);
-    playground.nextGen();
+var global_playground: lib.Playground = undefined;
+
+/// playground_init creates a playground from existing buffer
+export fn playground_init(rows: u32, cols: u32, buffptr: usize) usize {
+    const buff: [*]u1 = @ptrFromInt(buffptr);
+    const ptr = lib.Playground.fromBuffer(allocator, rows, cols, buff[0..(rows * cols)]) catch {
+        return fail(WasmError.OutOfMemory);
+    };
+    global_playground = ptr;
+    const msgbuf: []u8 = allocator.alloc(u8, 255) catch {
+        return fail(WasmError.OutOfMemory);
+    };
+    const message = std.fmt.bufPrint(msgbuf, "values {any}", .{ptr.grid}) catch {
+        // too large to bufPrint
+        return fail(WasmError.OutOfMemory);
+    };
+    const hello = "initializing...";
+    host_log(@intFromPtr(hello), hello.len);
+    host_log(@intFromPtr(message.ptr), message.len);
+    return @intFromPtr(&global_playground);
+}
+
+export fn playground_grid() usize {
+    return @intFromPtr(global_playground.grid.ptr);
+}
+
+export fn playground_destroy() void {
+    global_playground.deinit(allocator);
+}
+
+/// playground_nextgen returns the pointer to the grid
+export fn playground_nextgen() usize {
+    global_playground.nextGen();
+    return @intFromPtr(global_playground.grid.ptr);
 }
 
 fn playgroundFromPtr(ptr: usize) *lib.Playground {

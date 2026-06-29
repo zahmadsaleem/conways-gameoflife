@@ -78,7 +78,7 @@ pub const Playground = struct {
                 const row_index = i / self.columns;
                 const col_index = i % self.columns;
                 const local_i = i % LANE_SIZE;
-                if (row_index >= self.columns - 1) {
+                if (row_index >= self.rows - 1) {
                     break;
                 }
                 neibors[local_i] += self.neighborLifeCountNext(row_index, col_index);

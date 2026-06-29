@@ -49,24 +49,43 @@ pub const Playground = struct {
 
     pub fn nextGen(self: *Playground) void {
         var pos: usize = 0;
-        const LANE_SIZE = 512;
+        const LANE_SIZE = 2048;
         var neibors: [LANE_SIZE]u4 = undefined;
         var next: [LANE_SIZE]u1 = undefined;
         while (pos < self.rows * self.columns) {
             @memset(neibors[0..], 0);
             @memset(next[0..], 0);
             const last: usize = @min(self.columns * self.rows, pos + LANE_SIZE);
+            var ii = pos;
+            while (ii < last) {
+                const row_index = ii / self.columns;
+                const col_index = ii % self.columns;
+                if (row_index == 0) {
+                    ii = pos + self.columns; // move to next row
+                    continue;
+                }
+                const local_i = ii % LANE_SIZE;
+                neibors[local_i] += self.neighborLifeCountPrev(row_index, col_index);
+                ii += 1;
+            }
             for (pos..last) |i| {
                 const row_index = i / self.columns;
                 const col_index = i % self.columns;
                 const local_i = i % LANE_SIZE;
-                if (row_index > 0) {
-                    neibors[local_i] += self.neighborLifeCountPrev(row_index, col_index);
-                }
                 neibors[local_i] += self.neighborLifeCountCurr(row_index, col_index);
-                if (row_index < self.rows - 1) {
-                    neibors[local_i] += self.neighborLifeCountNext(row_index, col_index);
+            }
+            for (pos..last) |i| {
+                const row_index = i / self.columns;
+                const col_index = i % self.columns;
+                const local_i = i % LANE_SIZE;
+                if (row_index >= self.columns - 1) {
+                    break;
                 }
+                neibors[local_i] += self.neighborLifeCountNext(row_index, col_index);
+            }
+
+            for (pos..last) |i| {
+                const local_i = i % LANE_SIZE;
                 next[local_i] = switch (neibors[local_i]) {
                     0...1 => 0,
                     2 => self.grid[i],
@@ -74,6 +93,7 @@ pub const Playground = struct {
                     else => 0,
                 };
             }
+
             @memcpy(self.swap[pos..last], next[0..(last - pos)]);
             pos += LANE_SIZE;
         }

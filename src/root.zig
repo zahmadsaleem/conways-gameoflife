@@ -49,7 +49,7 @@ pub const Playground = struct {
 
     pub fn nextGen(self: *Playground) void {
         var pos: usize = 0;
-        const LANE_SIZE = 2048;
+        const LANE_SIZE = 1024;
         var neibors: [LANE_SIZE]u4 = undefined;
         var next: [LANE_SIZE]u1 = undefined;
         while (pos < self.rows * self.columns) {

@@ -49,7 +49,7 @@ pub const Playground = struct {
 
     pub fn nextGen(self: *Playground) void {
         var pos: usize = 0;
-        const LANE_SIZE = 4096;
+        const LANE_SIZE = 512;
         var neibors: [LANE_SIZE]u4 = undefined;
         var next: [LANE_SIZE]u1 = undefined;
         while (pos < self.rows * self.columns) {
@@ -60,22 +60,13 @@ pub const Playground = struct {
                 const row_index = i / self.columns;
                 const col_index = i % self.columns;
                 const local_i = i % LANE_SIZE;
-                if (row_index == 0) {
-                    continue;
+                if (row_index > 0) {
+                    neibors[local_i] += self.neighborLifeCountPrev(row_index, col_index);
                 }
-                neibors[local_i] += self.neighborLifeCountPrev(row_index, col_index);
                 neibors[local_i] += self.neighborLifeCountCurr(row_index, col_index);
-                if (row_index >= self.rows - 1) {
+                if (row_index < self.rows - 1) {
                     neibors[local_i] += self.neighborLifeCountNext(row_index, col_index);
-                    next[local_i] = switch (neibors[local_i]) {
-                        0...1 => 0,
-                        2 => self.grid[i],
-                        3 => 1,
-                        else => 0,
-                    };
-                    break;
                 }
-                neibors[local_i] += self.neighborLifeCountNext(row_index, col_index);
                 next[local_i] = switch (neibors[local_i]) {
                     0...1 => 0,
                     2 => self.grid[i],

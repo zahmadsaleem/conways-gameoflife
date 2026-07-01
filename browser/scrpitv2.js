@@ -1,2 +1,0 @@
-const G = window.G;
-

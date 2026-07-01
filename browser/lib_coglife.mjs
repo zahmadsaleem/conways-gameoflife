@@ -1,5 +1,6 @@
-async function Playground() {
-  const bytes = await fetch("coglife_wasm.wasm").then((r) => r.arrayBuffer());
+(async () => {
+  const bytes = await fetch("coglife_wasm.wasm").
+    then((r) => r.arrayBuffer());
 
   let wasm;
 
@@ -29,22 +30,20 @@ async function Playground() {
   const checkinit = () => {
     if (!initialized) throw new Error("playground not initialized");
   }
-  return {
-    init: (rows, cols, seed = undefined) => {
+  window.G = {
+    init: (rows, cols, seed) => {
       if (initialized) {
         throw new Error("playground already initialized");
       }
       grid_size = rows * cols;
-      if (seed) {
-        if (seed.length !== rows * cols) {
-          throw new Error("seed doesnt match grid")
-        }
-        const seed_ptr = wasm.alloc_u8(grid_size);
-        const mem = new Uint8Array(wasm.memory.buffer, seed_ptr, grid_size);
-        mem.set(seed, 0);
-        wasm.playground_init(3, 3, seed);
-        wasm.free_u8(seed, 9);
+      if (!seed || seed.length !== rows * cols) {
+        throw new Error("seed doesnt match grid")
       }
+      const seed_ptr = wasm.alloc_u8(grid_size);
+      const mem = new Uint8Array(wasm.memory.buffer, seed_ptr, grid_size);
+      mem.set(seed, 0);
+      wasm.playground_init(3, 3, seed);
+      wasm.free_u8(seed, 9);
     },
     next: () => () => {
       checkinit();
@@ -63,4 +62,4 @@ async function Playground() {
     },
     err,
   }
-};
+})();

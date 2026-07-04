@@ -41,10 +41,14 @@ fn main(input: VertexInput) -> VertexOutput {
         vec2<f32>(0.5, -0.5),
         vec2<f32>(0.5, 0.5)
     );
-
+    let columns = uniforms.gridSize.x;
+    let rows = uniforms.gridSize.y;
+    let X = uniforms.pointSize * (input.position % columns);
+    let Y = uniforms.pointSize * (input.position / columns);
+    let topLeftposition = vec2<u32>(X, Y);
+    let centerPosition = topLeftposition + vec2<u32>(uniforms.pointSize / 2, uniforms.pointSize / 2);
     let corner = corners[input.vertexIndex];
-    let position = vec2<f32>(f32(input.position / uniforms.gridSize.y), f32(input.position % uniforms.gridSize.x));
-    let pixelPosition = position + corner * f32(uniforms.pointSize);
+    let pixelPosition = vec2<f32>(centerPosition) + corner * f32(uniforms.pointSize);
 
     let zeroToOne = pixelPosition / vec2<f32>(f32(uniforms.resolution.x), f32(uniforms.resolution.y));
     let zeroToTwo = zeroToOne * 2.0;

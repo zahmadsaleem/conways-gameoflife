@@ -1,8 +1,17 @@
 const G = window.G;
+const PIXEL_SIZE = 10;
+const PADDING = 25;
+const CANVAS_WIDTH = Math.floor((window.innerWidth - PADDING) / PIXEL_SIZE) * PIXEL_SIZE;
+const CANVAS_HEIGHT = Math.floor((window.innerHeight - PADDING) / PIXEL_SIZE) * PIXEL_SIZE;
 
 const canvas = document.getElementById("canvas");
-canvas.height = 200;
-canvas.width = 200;
+canvas.height = CANVAS_HEIGHT;
+canvas.width = CANVAS_WIDTH;
+const GRID_ROWS = CANVAS_HEIGHT / PIXEL_SIZE;
+const GRID_COLUMNS = CANVAS_WIDTH / PIXEL_SIZE;
+const GRID_SIZE = GRID_ROWS * GRID_COLUMNS;
+console.dir({ CANVAS_HEIGHT, CANVAS_WIDTH, PIXEL_SIZE, GRID_ROWS, GRID_COLUMNS, GRID_SIZE });
+
 if (!navigator.gpu) {
   throw new Error("WebGPU is not supported on this browser.");
 }
@@ -39,14 +48,15 @@ if (!navigator.gpu) {
     code: fragmentSource,
   });
 
-  const positions = new Uint32Array(Array(100).fill(0).map((_, i) => i));
 
-  const states = new Uint32Array(Array(100).fill(0).
+
+  const positions = new Uint32Array(Array(GRID_SIZE).fill(0).map((_, i) => i));
+
+  const states = new Uint32Array(Array(GRID_SIZE).fill(0).
     map((_, i) => i % 2));
 
   const pointCount = positions.length;
   const verticesPerPoint = 6;
-  const pointSize = 2;
 
   function createBuffer(device, data, usage) {
     const buffer = device.createBuffer({
@@ -75,10 +85,10 @@ if (!navigator.gpu) {
   const uniformData = new Uint32Array([
     canvas.width,
     canvas.height,
-    pointSize,
+    PIXEL_SIZE,
     0,
-    10,
-    10
+    GRID_COLUMNS,
+    GRID_ROWS
   ]);
 
   const uniformBuffer = createBuffer(
@@ -123,7 +133,7 @@ if (!navigator.gpu) {
       entryPoint: "main",
       buffers: [
         {
-          arrayStride: 4,
+          arrayStride: 4,// ?what is this?
           stepMode: "instance",
           attributes: [
             {
@@ -165,10 +175,10 @@ if (!navigator.gpu) {
   function draw() {
     uniformData[0] = canvas.width;
     uniformData[1] = canvas.height;
-    uniformData[2] = pointSize;
+    uniformData[2] = PIXEL_SIZE;
     uniformData[3] = 0;
-    uniformData[4] = 10;
-    uniformData[5] = 10;
+    uniformData[4] = GRID_COLUMNS;
+    uniformData[5] = GRID_ROWS;
 
     device.queue.writeBuffer(uniformBuffer, 0, uniformData);
 

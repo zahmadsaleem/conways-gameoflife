@@ -1,4 +1,4 @@
-const PIXEL_SIZE = 10;
+const PIXEL_SIZE = 2;
 const PADDING = 25;
 const CANVAS_WIDTH = Math.floor((window.innerWidth - PADDING) / PIXEL_SIZE) * PIXEL_SIZE;
 const CANVAS_HEIGHT = Math.floor((window.innerHeight - PADDING) / PIXEL_SIZE) * PIXEL_SIZE;
@@ -180,6 +180,10 @@ if (!navigator.gpu) {
     uniformData[3] = 0;
     uniformData[4] = GRID_COLUMNS;
     uniformData[5] = GRID_ROWS;
+
+    const next = G.next();
+
+    device.queue.writeBuffer(stateBuffer, 0, next);
 
     device.queue.writeBuffer(uniformBuffer, 0, uniformData);
 

@@ -46,7 +46,7 @@
       wasm.free_u8(seed_ptr, grid_size);
       initialized = true;
     },
-    next: () => () => {
+    next: () => {
       checkinit();
       const next_gen = wasm.playground_nextgen();
       return Uint32Array.from(new Uint8Array(wasm.memory.buffer, next_gen, grid_size));

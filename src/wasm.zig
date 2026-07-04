@@ -71,7 +71,7 @@ export fn alloc_u8(len: usize) usize {
     const buff = allocator.alloc(u8, len) catch |err| {
         return fail(err);
     };
-    return @intFromPtr(&buff);
+    return @intFromPtr(buff.ptr);
 }
 
 export fn free_u8(ptr_addr: usize, len: usize) void {

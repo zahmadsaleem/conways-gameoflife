@@ -1,5 +1,5 @@
 (async () => {
-  const bytes = await fetch("http://localhost:8080/coglife_wasm.wasm").then((r) => r.arrayBuffer());
+  const bytes = await fetch("coglife_wasm.wasm").then((r) => r.arrayBuffer());
 
   let wasm;
 

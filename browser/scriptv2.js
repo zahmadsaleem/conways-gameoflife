@@ -1,4 +1,3 @@
-const G = window.G;
 const PIXEL_SIZE = 10;
 const PADDING = 25;
 const CANVAS_WIDTH = Math.floor((window.innerWidth - PADDING) / PIXEL_SIZE) * PIXEL_SIZE;
@@ -52,8 +51,10 @@ if (!navigator.gpu) {
 
   const positions = new Uint32Array(Array(GRID_SIZE).fill(0).map((_, i) => i));
 
-  const states = new Uint32Array(Array(GRID_SIZE).fill(0).
-    map((_, i) => i % 2));
+  const rand = Array(GRID_SIZE).fill(0).map(() => Math.round(Math.random()));
+  const G = window.G;
+  G.init(GRID_ROWS, GRID_COLUMNS, rand);
+  const states = G.current();
 
   const pointCount = positions.length;
   const verticesPerPoint = 6;

@@ -42,18 +42,19 @@
       const seed_ptr = wasm.alloc_u8(grid_size);
       const mem = new Uint8Array(wasm.memory.buffer, seed_ptr, grid_size);
       mem.set(seed, 0);
-      wasm.playground_init(3, 3, seed);
-      wasm.free_u8(seed, 9);
+      wasm.playground_init(rows, cols, seed_ptr);
+      wasm.free_u8(seed_ptr, grid_size);
+      initialized = true;
     },
     next: () => () => {
       checkinit();
       const next_gen = wasm.playground_nextgen();
-      return new Uint8Array(wasm.memory.buffer, next_gen, grid_size);
+      return Uint32Array.from(new Uint8Array(wasm.memory.buffer, next_gen, grid_size));
     },
     current: () => {
       checkinit();
       const current_grid = wasm.playground_grid();
-      return new Uint8Array(wasm.memory.buffer, current_grid, grid_size);
+      return Uint32Array.from(new Uint8Array(wasm.memory.buffer, current_grid, grid_size));
     },
     destroy: () => {
       checkinit();
@@ -62,4 +63,5 @@
     },
     err,
   }
+  console.log("coglife init", window.G, wasm);
 })();

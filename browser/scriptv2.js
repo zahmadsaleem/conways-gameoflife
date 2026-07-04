@@ -1,7 +1,8 @@
 const G = window.G;
 
 const canvas = document.getElementById("canvas");
-
+canvas.height = 200;
+canvas.width = 200;
 if (!navigator.gpu) {
   throw new Error("WebGPU is not supported on this browser.");
 }
@@ -38,23 +39,14 @@ if (!navigator.gpu) {
     code: fragmentSource,
   });
 
-  const positions = new Float32Array([
-    100.0, 100.0,
-    300.0, 200.0,
-    500.0, 300.0,
-  ]);
+  const positions = new Uint32Array(Array(100).fill(0).map((_, i) => i));
 
-  // WebGPU does not support uint8x1 as a vertex format.
-  // Use uint8x4 and store the state in the first byte of each 4-byte record.
-  const states = new Uint8Array([
-    0, 0, 0, 0,
-    1, 0, 0, 0,
-    0, 0, 0, 0,
-  ]);
+  const states = new Uint32Array(Array(100).fill(0).
+    map((_, i) => i % 2));
 
-  const pointCount = positions.length / 2;
+  const pointCount = positions.length;
   const verticesPerPoint = 6;
-  const pointSize = 16.0;
+  const pointSize = 2;
 
   function createBuffer(device, data, usage) {
     const buffer = device.createBuffer({
@@ -80,11 +72,13 @@ if (!navigator.gpu) {
   );
 
   // resolution.x, resolution.y, pointSize, padding
-  const uniformData = new Float32Array([
+  const uniformData = new Uint32Array([
     canvas.width,
     canvas.height,
     pointSize,
-    0.0,
+    0,
+    10,
+    10
   ]);
 
   const uniformBuffer = createBuffer(
@@ -129,13 +123,13 @@ if (!navigator.gpu) {
       entryPoint: "main",
       buffers: [
         {
-          arrayStride: 8,
+          arrayStride: 4,
           stepMode: "instance",
           attributes: [
             {
               shaderLocation: 0,
               offset: 0,
-              format: "float32x2",
+              format: "uint32",
             },
           ],
         },
@@ -146,7 +140,7 @@ if (!navigator.gpu) {
             {
               shaderLocation: 1,
               offset: 0,
-              format: "uint8x4",
+              format: "uint32",
             },
           ],
         },
@@ -172,6 +166,9 @@ if (!navigator.gpu) {
     uniformData[0] = canvas.width;
     uniformData[1] = canvas.height;
     uniformData[2] = pointSize;
+    uniformData[3] = 0;
+    uniformData[4] = 10;
+    uniformData[5] = 10;
 
     device.queue.writeBuffer(uniformBuffer, 0, uniformData);
 

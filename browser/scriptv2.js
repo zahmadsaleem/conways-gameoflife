@@ -1,132 +1,212 @@
 const G = window.G;
 
 const canvas = document.getElementById("canvas");
-const gl = canvas.getContext("webgl2");
 
-if (!gl) {
-    throw new Error("WebGL 2 not supported on this browser!");
+if (!navigator.gpu) {
+  throw new Error("WebGPU is not supported on this browser.");
 }
 
-const vsSource = `#version 300 es
-    in vec2 a_position;
-    in uint a_state;
 
-    uniform vec2 u_resolution;
+(async () => {
+  const adapter = await navigator.gpu.requestAdapter();
 
-    flat out uint v_state;
+  if (!adapter) {
+    throw new Error("No WebGPU adapter found.");
+  }
 
-    void main() {
-        vec2 zeroToOne = a_position / u_resolution;
-        vec2 zeroToTwo = zeroToOne * 2.0;
-        vec2 ndcSpace = zeroToTwo - 1.0;
+  const device = await adapter.requestDevice();
 
-        gl_Position = vec4(ndcSpace * vec2(1.0, -1.0), 0.0, 1.0);
-        gl_PointSize = 5.0;
+  const context = canvas.getContext("webgpu");
+  const format = navigator.gpu.getPreferredCanvasFormat();
 
-        v_state = a_state;
-    }
-`;
+  context.configure({
+    device,
+    format,
+    alphaMode: "opaque",
+  });
 
-const fsSource = `#version 300 es
-    precision mediump float;
-    precision mediump int;
+  const [vertexSource, fragmentSource] = await Promise.all([
+    fetch("./vertex.wgsl").then((res) => res.text()),
+    fetch("./fragment.wgsl").then((res) => res.text()),
+  ]);
 
-    flat in uint v_state;
+  const vertexModule = device.createShaderModule({
+    code: vertexSource,
+  });
 
-    out vec4 fragColor;
+  const fragmentModule = device.createShaderModule({
+    code: fragmentSource,
+  });
 
-    void main() {
-        if (v_state == 0u) {
-            fragColor = vec4(1.0, 0.3, 0.0, 1.0);
-        } else if (v_state == 1u) {
-            fragColor = vec4(0.0, 0.8, 1.0, 1.0);
-        } else {
-            fragColor = vec4(0.5, 0.5, 0.5, 1.0);
-        }
-    }
-`;
-
-function compileShader(gl, type, source) {
-    const shader = gl.createShader(type);
-    gl.shaderSource(shader, source);
-    gl.compileShader(shader);
-
-    if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-        const info = gl.getShaderInfoLog(shader);
-        gl.deleteShader(shader);
-        throw new Error(info);
-    }
-
-    return shader;
-}
-
-const vertexShader = compileShader(gl, gl.VERTEX_SHADER, vsSource);
-const fragmentShader = compileShader(gl, gl.FRAGMENT_SHADER, fsSource);
-
-const program = gl.createProgram();
-gl.attachShader(program, vertexShader);
-gl.attachShader(program, fragmentShader);
-gl.linkProgram(program);
-
-if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
-    throw new Error(gl.getProgramInfoLog(program));
-}
-
-const posLocation = gl.getAttribLocation(program, "a_position");
-const stateLocation = gl.getAttribLocation(program, "a_state");
-const resolutionUniformLocation = gl.getUniformLocation(program, "u_resolution");
-
-const positions = new Float32Array([
-    0.0, 0.0,
+  const positions = new Float32Array([
     100.0, 100.0,
-  120,120,
-]);
+    300.0, 200.0,
+    500.0, 300.0,
+  ]);
 
-const states = new Uint8Array([
-    0,
-  0,
-  1
-]);
+  // WebGPU does not support uint8x1 as a vertex format.
+  // Use uint8x4 and store the state in the first byte of each 4-byte record.
+  const states = new Uint8Array([
+    0, 0, 0, 0,
+    1, 0, 0, 0,
+    0, 0, 0, 0,
+  ]);
 
-const positionBuffer = gl.createBuffer();
-gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
-gl.bufferData(gl.ARRAY_BUFFER, positions, gl.STATIC_DRAW);
+  const pointCount = positions.length / 2;
+  const verticesPerPoint = 6;
+  const pointSize = 16.0;
 
-const stateBuffer = gl.createBuffer();
-gl.bindBuffer(gl.ARRAY_BUFFER, stateBuffer);
-gl.bufferData(gl.ARRAY_BUFFER, states, gl.STATIC_DRAW);
+  function createBuffer(device, data, usage) {
+    const buffer = device.createBuffer({
+      size: data.byteLength,
+      usage: usage | GPUBufferUsage.COPY_DST,
+    });
 
-const vao = gl.createVertexArray();
-gl.bindVertexArray(vao);
+    device.queue.writeBuffer(buffer, 0, data);
 
-gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
-gl.vertexAttribPointer(posLocation, 2, gl.FLOAT, false, 0, 0);
-gl.enableVertexAttribArray(posLocation);
+    return buffer;
+  }
 
-gl.bindBuffer(gl.ARRAY_BUFFER, stateBuffer);
-gl.vertexAttribIPointer(stateLocation, 1, gl.UNSIGNED_BYTE, 0, 0);
-gl.enableVertexAttribArray(stateLocation);
+  const positionBuffer = createBuffer(
+    device,
+    positions,
+    GPUBufferUsage.VERTEX
+  );
 
-gl.bindVertexArray(null);
+  const stateBuffer = createBuffer(
+    device,
+    states,
+    GPUBufferUsage.VERTEX
+  );
 
-function draw() {
-    gl.viewport(0, 0, canvas.width, canvas.height);
+  // resolution.x, resolution.y, pointSize, padding
+  const uniformData = new Float32Array([
+    canvas.width,
+    canvas.height,
+    pointSize,
+    0.0,
+  ]);
 
-    gl.clearColor(0.08, 0.08, 0.08, 1.0);
-    gl.clear(gl.COLOR_BUFFER_BIT);
+  const uniformBuffer = createBuffer(
+    device,
+    uniformData,
+    GPUBufferUsage.UNIFORM
+  );
 
-    gl.useProgram(program);
+  const bindGroupLayout = device.createBindGroupLayout({
+    entries: [
+      {
+        binding: 0,
+        visibility: GPUShaderStage.VERTEX,
+        buffer: {
+          type: "uniform",
+        },
+      },
+    ],
+  });
 
-    gl.uniform2f(
-        resolutionUniformLocation,
-        canvas.width,
-        canvas.height
-    );
+  const pipelineLayout = device.createPipelineLayout({
+    bindGroupLayouts: [bindGroupLayout],
+  });
 
-    gl.bindVertexArray(vao);
-    gl.drawArrays(gl.POINTS, 0, positions.length/2);
+  const bindGroup = device.createBindGroup({
+    layout: bindGroupLayout,
+    entries: [
+      {
+        binding: 0,
+        resource: {
+          buffer: uniformBuffer,
+        },
+      },
+    ],
+  });
+
+  const pipeline = device.createRenderPipeline({
+    layout: pipelineLayout,
+
+    vertex: {
+      module: vertexModule,
+      entryPoint: "main",
+      buffers: [
+        {
+          arrayStride: 8,
+          stepMode: "instance",
+          attributes: [
+            {
+              shaderLocation: 0,
+              offset: 0,
+              format: "float32x2",
+            },
+          ],
+        },
+        {
+          arrayStride: 4,
+          stepMode: "instance",
+          attributes: [
+            {
+              shaderLocation: 1,
+              offset: 0,
+              format: "uint8x4",
+            },
+          ],
+        },
+      ],
+    },
+
+    fragment: {
+      module: fragmentModule,
+      entryPoint: "main",
+      targets: [
+        {
+          format,
+        },
+      ],
+    },
+
+    primitive: {
+      topology: "triangle-list",
+    },
+  });
+
+  function draw() {
+    uniformData[0] = canvas.width;
+    uniformData[1] = canvas.height;
+    uniformData[2] = pointSize;
+
+    device.queue.writeBuffer(uniformBuffer, 0, uniformData);
+
+    const encoder = device.createCommandEncoder();
+
+    const renderPass = encoder.beginRenderPass({
+      colorAttachments: [
+        {
+          view: context.getCurrentTexture().createView(),
+          clearValue: {
+            r: 0.08,
+            g: 0.08,
+            b: 0.08,
+            a: 1.0,
+          },
+          loadOp: "clear",
+          storeOp: "store",
+        },
+      ],
+    });
+
+    renderPass.setPipeline(pipeline);
+    renderPass.setBindGroup(0, bindGroup);
+
+    renderPass.setVertexBuffer(0, positionBuffer);
+    renderPass.setVertexBuffer(1, stateBuffer);
+
+    renderPass.draw(verticesPerPoint, pointCount);
+
+    renderPass.end();
+
+    device.queue.submit([encoder.finish()]);
 
     requestAnimationFrame(draw);
-}
+  }
 
-requestAnimationFrame(draw);
+  requestAnimationFrame(draw);
+})();

@@ -13,8 +13,8 @@ pub const Cell = struct {
 pub const Playground = struct {
     rows: u32,
     columns: u32,
-    grid: []Cell,
-    swap: []Cell = undefined,
+    grid: [][]Cell,
+    swap: [][]Cell = undefined,
 
     fn neighborLifeCount(self: *const Playground, row: u32, col: u32) u4 {
         assert(self.rows > row);
@@ -24,16 +24,19 @@ pub const Playground = struct {
         const has_prev_col: u32 = @intFromBool(col > 0);
         const has_next_col: u32 = @intFromBool(col + 1 < self.columns);
         var neighbors: u32 = 0;
-        neighbors += self.grid[(row - 1 * has_prev_row) * self.columns + col - 1 * has_prev_col].value * (has_prev_row & has_prev_col);
-        neighbors += self.grid[(row - 1 * has_prev_row) * self.columns + col].value * has_prev_row;
-        neighbors += self.grid[(row - 1 * has_prev_row) * self.columns + col + 1 * has_next_col].value * (has_prev_row & has_next_col);
+        const prev_row = self.grid[(row - 1 * has_prev_row)];
+        const next_row = self.grid[(row + 1 * has_next_row)];
+        const current_row = self.grid[row];
+        neighbors += prev_row[col - 1 * has_prev_col].value * (has_prev_row & has_prev_col);
+        neighbors += prev_row[col].value * has_prev_row;
+        neighbors += prev_row[col + 1 * has_next_col].value * (has_prev_row & has_next_col);
 
-        neighbors += self.grid[row * self.columns + col - 1 * has_prev_col].value * has_prev_col;
-        neighbors += self.grid[row * self.columns + col + 1 * has_next_col].value * has_next_col;
+        neighbors += current_row[col - 1 * has_prev_col].value * has_prev_col;
+        neighbors += current_row[col + 1 * has_next_col].value * has_next_col;
 
-        neighbors += self.grid[(row + 1 * has_next_row) * self.columns + col - 1 * has_prev_col].value * (has_next_row & has_prev_col);
-        neighbors += self.grid[(row + 1 * has_next_row) * self.columns + col].value * has_next_row;
-        neighbors += self.grid[(row + 1 * has_next_row) * self.columns + col + 1 * has_next_col].value * (has_next_row & has_next_col);
+        neighbors += next_row[col - 1 * has_prev_col].value * (has_next_row & has_prev_col);
+        neighbors += next_row[col].value * has_next_row;
+        neighbors += next_row[col + 1 * has_next_col].value * (has_next_row & has_next_col);
 
         return @intCast(neighbors);
     }
@@ -41,7 +44,7 @@ pub const Playground = struct {
     pub fn print(self: *const Playground, writer: *std.Io.Writer) !void {
         for (0..self.rows) |row_index| {
             for (0..self.columns) |col_index| {
-                const cell = self.grid[row_index * self.columns + col_index];
+                const cell = self.grid[row_index][col_index];
                 const display: u16 = switch (cell.value) {
                     0 => ' ',
                     1 => '\u{2593}',
@@ -55,23 +58,19 @@ pub const Playground = struct {
     pub fn nextGen(self: *Playground) void {
         for (0..self.rows) |row_index| {
             for (0..self.columns) |col_index| {
-                var cell = self.grid[self.cellIndex(row_index, col_index)];
+                var cell = self.grid[row_index][col_index];
                 switch (self.neighborLifeCount(@intCast(row_index), @intCast(col_index))) {
                     0...1 => cell.setAlive(false),
                     2 => {},
                     3 => cell.setAlive(true),
                     else => cell.setAlive(false),
                 }
-                self.swap[self.cellIndex(row_index, col_index)] = cell;
+                self.swap[row_index][col_index] = cell;
             }
         }
         const temp = self.grid;
         self.grid = self.swap;
         self.swap = temp;
-    }
-
-    fn cellIndex(self: *const Playground, row_index: usize, col_index: usize) usize {
-        return row_index * self.columns + col_index;
     }
 
     //
@@ -97,21 +96,33 @@ pub const Playground = struct {
     }
 
     pub fn deinit(self: *Playground, allocator: std.mem.Allocator) void {
+        for (0..self.rows) |row_index| {
+            allocator.free(self.grid[row_index]);
+            allocator.free(self.swap[row_index]);
+        }
         allocator.free(self.grid);
         allocator.free(self.swap);
     }
 
     pub fn new(allocator: std.mem.Allocator, rows: u32, columns: u32) !Playground {
-        const grid = try allocator.alloc(Cell, rows * columns);
-        const swap = try allocator.alloc(Cell, rows * columns);
+        const grid = try allocator.alloc([]Cell, rows);
+        for (0..rows) |row_index| {
+            grid[row_index] = try allocator.alloc(Cell, columns);
+        }
+        const swap = try allocator.alloc([]Cell, rows);
+        for (0..rows) |row_index| {
+            swap[row_index] = try allocator.alloc(Cell, columns);
+        }
         return Playground{ .rows = rows, .columns = columns, .grid = grid, .swap = swap };
     }
 
     pub fn fromBuffer(allocator: std.mem.Allocator, rows: u32, columns: u32, buff: []u1) !Playground {
         assert(buff.len == rows * columns);
         const playground = try Playground.new(allocator, rows, columns);
-        for (0..rows * columns) |pos| {
-            playground.grid[pos].value = buff[pos];
+        for (0..rows) |row_index| {
+            for (0..columns) |col_index| {
+                playground.grid[row_index][col_index].value = buff[row_index * rows + col_index];
+            }
         }
         return playground;
     }
@@ -120,9 +131,11 @@ pub const Playground = struct {
         var r = std.Random.DefaultPrng.init(@intCast(std.Io.Clock.real.now(io).toMilliseconds()));
 
         var playground = try Playground.new(allocator, rows, columns);
-        for (0..rows * columns) |i| {
-            const mycellval = r.random().uintAtMost(u1, 1);
-            playground.grid[i] = Cell{ .value = mycellval };
+        for (0..rows) |row_index| {
+            for (0..columns) |col_index| {
+                const mycellval = r.random().uintAtMost(u1, 1);
+                playground.grid[row_index][col_index] = Cell{ .value = mycellval };
+            }
         }
         return playground;
     }
@@ -166,5 +179,7 @@ test "playground next generation works" {
     };
     var playgound2 = try Playground.fromBuffer(std.testing.allocator, 3, 3, expected[0..]);
     defer playgound2.deinit(std.testing.allocator);
-    try std.testing.expectEqualSlices(Cell, playgound2.grid, playgound.grid);
+    try std.testing.expectEqualSlices(Cell, playgound2.grid[0], playgound.grid[0]);
+    try std.testing.expectEqualSlices(Cell, playgound2.grid[1], playgound.grid[1]);
+    try std.testing.expectEqualSlices(Cell, playgound2.grid[2], playgound.grid[2]);
 }

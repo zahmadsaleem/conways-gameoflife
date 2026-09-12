@@ -1,4 +1,4 @@
 ### Conway's Game of Life
 
 
-[View in browser](https://conways-gol.netlify.app/)
+[View in browser](https://madsolame.com/conways-gameoflife/)

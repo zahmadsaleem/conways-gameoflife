@@ -21,7 +21,9 @@ pub fn build(b: *std.Build) void {
             },
         }),
     });
-
+    // Emit assembly into zig-out/bin/myapp.s
+    const install_asm = b.addInstallBinFile(exe.getEmittedAsm(), "coglife.s");
+    b.getInstallStep().dependOn(&install_asm.step);
     // TODO: webgpu engine for neigbor calc
 
     // https://github.com/zig-gamedev/zgpu#getting-started

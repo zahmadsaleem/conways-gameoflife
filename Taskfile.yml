@@ -18,5 +18,8 @@ tasks:
     dir: ./browser
     cmds:
       - "python3 -m http.server"
-      
-    
+     
+  preview:
+    deps: [build]
+    cmds:
+      - "./zig-out/bin/coglife --rows=10 --columns=10 --sleep=200"

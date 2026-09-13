@@ -1,0 +1,22 @@
+# yaml-language-server: $schema=https://taskfile.dev/schema.json
+
+version: '3'
+
+tasks:
+  build:
+    dir: ./
+    cmds:
+      - "zig build -Doptimize=ReleaseFast"
+      - "cp ./zig-out/bin/coglife_wasm.wasm ./browser/"
+
+  build:dev:
+    cmds:
+      - "zig build -Doptimize=Debug"
+
+  web:
+    deps: [build]
+    dir: ./browser
+    cmds:
+      - "python3 -m http.server"
+      
+    

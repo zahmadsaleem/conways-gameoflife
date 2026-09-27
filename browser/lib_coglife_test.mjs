@@ -1,5 +1,5 @@
 (async () => {
-  const bytes = await fetch("coglife_wasm.wasm").then((r) => r.arrayBuffer());
+  const bytes = await fetch("http://localhost:8000/coglife_wasm.wasm").then((r) => r.arrayBuffer());
 
   let wasm;
 
@@ -35,7 +35,7 @@
   console.log("playground_ptr", playground);
   last_err();
 
-  const current = wasm.playground_grid(playground);
+  const current = wasm.playground_grid();
   const grid = new Uint8Array(wasm.memory.buffer, current, 9);
   console.log("current", grid);
 

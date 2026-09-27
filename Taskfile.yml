@@ -23,3 +23,8 @@ tasks:
     deps: [build]
     cmds:
       - "./zig-out/bin/coglife --rows=10 --columns=10 --sleep=200"
+
+  bench:
+    deps: [build]
+    cmds:
+      - time ./zig-out/bin/coglife --generations=60 --sleep=0 --no-render --rows=2169 --columns=3840

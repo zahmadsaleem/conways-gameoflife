@@ -74,9 +74,9 @@ pub fn main(init: std.process.Init) !void {
         const n = file.readPositionalAll(io, &buff, 0) catch {
             return ProgramError.FileTooBig;
         };
-        var inputBuff = try std.ArrayList(u1).initCapacity(allocator, cli.rows * cli.columns);
+        var inputBuff = try std.ArrayList(u8).initCapacity(allocator, cli.rows * cli.columns);
         for (buff[0..n]) |i| {
-            var value: u1 = 0;
+            var value: u8 = 0;
             switch (i) {
                 '\n' => continue,
                 '-' => value = 0, // dead
@@ -87,13 +87,13 @@ pub fn main(init: std.process.Init) !void {
             }
             try inputBuff.append(allocator, value);
         }
-        const u1buff = try inputBuff.toOwnedSlice(allocator);
-        if (cli.columns * cli.rows != u1buff.len) {
+        const u8Buff = try inputBuff.toOwnedSlice(allocator);
+        if (cli.columns * cli.rows != u8Buff.len) {
             return ProgramError.GridColumnMismatch;
         }
         inputBuff.deinit(allocator);
-        playground = try game.Playground.fromBuffer(allocator, cli.rows, cli.columns, u1buff);
-        allocator.free(u1buff);
+        playground = try game.Playground.fromBuffer(allocator, cli.rows, cli.columns, u8Buff);
+        allocator.free(u8Buff);
     } else {
         playground = try game.Playground.random(allocator, init.io, cli.rows, cli.columns);
     }

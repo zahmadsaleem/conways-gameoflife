@@ -19,71 +19,78 @@ pub const Cell = struct {
 pub const Playground = struct {
     rows: u32,
     columns: u32,
-    grid: [][]Cell,
-    swap: [][]Cell = undefined,
+    grid: []Cell,
+    swap: []Cell = undefined,
 
+    fn cellIndex(self: *const Playground, row: usize, col: usize) usize {
+        return row * self.columns + col;
+    }
+
+    fn cellValue(self: *const Playground, row: usize, col: usize) u8 {
+        return self.grid[row * self.columns + col].value;
+    }
     fn setNeigborsCorners(self: *Playground) void {
-        self.swap[0][0] = self.grid[0][0].nextCell(self.grid[0][1].value +
-            self.grid[1][1].value + self.grid[1][0].value);
-        self.swap[0][self.columns - 1] = self.grid[0][self.columns - 1].nextCell(self.grid[0][self.columns - 2].value +
-            self.grid[1][self.columns - 1].value + self.grid[1][self.columns - 2].value);
-        self.swap[self.rows - 1][self.columns - 1] = self.grid[self.rows - 1][self.columns - 1].nextCell(self.grid[self.rows - 2][self.columns - 2].value + self.grid[self.rows - 2][self.columns - 1].value +
-            self.grid[self.rows - 1][self.columns - 2].value);
-        self.swap[self.rows - 1][0] = self.grid[self.rows - 1][0].nextCell(self.grid[self.rows - 2][0].value + self.grid[self.rows - 2][1].value +
-            self.grid[self.rows - 1][1].value);
+        self.swap[self.cellIndex(0, 0)] = self.grid[self.cellIndex(0, 0)].nextCell(self.cellValue(0, 1) +
+            self.cellValue(1, 1) + self.cellValue(1, 0));
+        self.swap[self.cellIndex(0, self.columns - 1)] = self.grid[self.cellIndex(0, self.columns - 1)].nextCell(self.cellValue(0, self.columns - 2) +
+            self.cellValue(1, self.columns - 1) + self.cellValue(1, self.columns - 2));
+        self.swap[self.cellIndex(self.rows - 1, self.columns - 1)] = self.grid[self.cellIndex(self.rows - 1, self.columns - 1)].nextCell(self.cellValue(self.rows - 2, self.columns - 2) + self.cellValue(self.rows - 2, self.columns - 1) +
+            self.cellValue(self.rows - 1, self.columns - 2));
+        self.swap[self.cellIndex(self.rows - 1, 0)] = self.grid[self.cellIndex(self.rows - 1, 0)].nextCell(self.cellValue(self.rows - 2, 0) + self.cellValue(self.rows - 2, 1) +
+            self.cellValue(self.rows - 1, 1));
     }
 
     fn setNeighborsFirstRowInner(self: *Playground) void {
-        const current_row = self.grid[0];
-        const next_row = self.grid[1];
+        const current_row = self.grid[0..self.columns];
+        const next_row = self.grid[self.columns .. self.columns * 2];
         for (1..self.columns - 1) |col| {
             var cell = current_row[col];
             const neighbors = current_row[col - 1].value + current_row[col + 1].value +
                 next_row[col - 1].value + next_row[col].value + next_row[col + 1].value;
-            self.swap[0][col] = cell.nextCell(neighbors);
+            self.swap[self.cellIndex(0, col)] = cell.nextCell(neighbors);
         }
     }
 
     fn setNeighborsLastRowInner(self: *Playground) void {
-        const prev_row = self.grid[self.rows - 2];
-        const current_row = self.grid[self.rows - 1];
+        const prev_row = self.grid[(self.rows - 2) * self.columns .. (self.rows - 1) * self.columns];
+        const current_row = self.grid[(self.rows - 1) * self.columns .. self.rows * self.columns];
         for (1..self.columns - 1) |col| {
             var cell = current_row[col];
             const neighbors =
                 prev_row[col - 1].value + prev_row[col].value + prev_row[col + 1].value +
                 current_row[col - 1].value + current_row[col + 1].value;
-            self.swap[self.rows - 1][col] = cell.nextCell(neighbors);
+            self.swap[self.cellIndex(self.rows - 1, col)] = cell.nextCell(neighbors);
         }
     }
 
     fn setNeigborsFirstColInner(self: *Playground) void {
         const first_col = 0;
         for (1..self.rows - 1) |row| {
-            var cell = self.grid[row][0];
+            var cell = self.grid[self.cellIndex(row, 0)];
             const neighbors =
-                self.grid[row - 1][first_col].value + self.grid[row - 1][first_col + 1].value +
-                self.grid[row][first_col + 1].value +
-                self.grid[row + 1][first_col].value + self.grid[row + 1][first_col + 1].value;
-            self.swap[row][first_col] = cell.nextCell(neighbors);
+                self.cellValue(row - 1, first_col) + self.cellValue(row - 1, first_col + 1) +
+                self.cellValue(row, first_col + 1) +
+                self.cellValue(row + 1, first_col) + self.cellValue(row + 1, first_col + 1);
+            self.swap[self.cellIndex(row, first_col)] = cell.nextCell(neighbors);
         }
     }
 
     fn setNeigborsLastColInner(self: *Playground) void {
         const last_col = self.columns - 1;
         for (1..self.rows - 1) |row| {
-            var cell = self.grid[row][last_col];
+            var cell = self.grid[self.cellIndex(row, last_col)];
             const neighbors =
-                self.grid[row - 1][last_col - 1].value + self.grid[row + 1][last_col].value +
-                self.grid[row][last_col - 1].value +
-                self.grid[row + 1][last_col - 1].value + self.grid[row + 1][last_col].value;
-            self.swap[row][last_col] = cell.nextCell(neighbors);
+                self.cellValue(row - 1, last_col - 1) + self.cellValue(row + 1, last_col) +
+                self.cellValue(row, last_col - 1) +
+                self.cellValue(row + 1, last_col - 1) + self.cellValue(row + 1, last_col);
+            self.swap[self.cellIndex(row, last_col)] = cell.nextCell(neighbors);
         }
     }
 
     pub fn print(self: *const Playground, writer: *std.Io.Writer) !void {
         for (0..self.rows) |row_index| {
             for (0..self.columns) |col_index| {
-                const cell = self.grid[row_index][col_index];
+                const cell = self.grid[self.cellIndex(row_index, col_index)];
                 const display: u16 = switch (cell.value) {
                     0 => ' ',
                     1 => '\u{2593}',
@@ -97,15 +104,15 @@ pub const Playground = struct {
 
     fn setIslandCells(self: *Playground) void {
         for (1..self.rows - 1) |row_index| {
-            const prev_row = self.grid[row_index - 1];
-            const current_row = self.grid[row_index];
-            const next_row = self.grid[row_index + 1];
+            const prev_row = self.grid[(row_index - 1) * self.columns .. row_index * self.columns];
+            const current_row = self.grid[row_index * self.columns .. (row_index + 1) * self.columns];
+            const next_row = self.grid[(row_index + 1) * self.columns .. (row_index + 2) * self.columns];
             for (1..self.columns - 1) |col_index| {
-                var cell = self.grid[row_index][col_index];
+                var cell = self.grid[self.cellIndex(row_index, col_index)];
                 const neighbors = prev_row[col_index - 1].value + prev_row[col_index].value + prev_row[col_index + 1].value +
                     current_row[col_index - 1].value + current_row[col_index + 1].value +
                     next_row[col_index - 1].value + next_row[col_index].value + next_row[col_index + 1].value;
-                self.swap[row_index][col_index] = cell.nextCell(neighbors);
+                self.swap[self.cellIndex(row_index, col_index)] = cell.nextCell(neighbors);
             }
         }
     }
@@ -145,10 +152,6 @@ pub const Playground = struct {
     }
 
     pub fn deinit(self: *Playground, allocator: std.mem.Allocator) void {
-        for (0..self.rows) |row_index| {
-            allocator.free(self.grid[row_index]);
-            allocator.free(self.swap[row_index]);
-        }
         allocator.free(self.grid);
         allocator.free(self.swap);
     }
@@ -156,24 +159,18 @@ pub const Playground = struct {
     pub fn new(allocator: std.mem.Allocator, rows: u32, columns: u32) !Playground {
         assert(rows >= 3);
         assert(columns >= 3);
-        const grid = try allocator.alloc([]Cell, rows);
-        for (0..rows) |row_index| {
-            grid[row_index] = try allocator.alloc(Cell, columns);
-        }
-        const swap = try allocator.alloc([]Cell, rows);
-        for (0..rows) |row_index| {
-            swap[row_index] = try allocator.alloc(Cell, columns);
-        }
+        const grid = try allocator.alloc(Cell, rows * columns);
+        const swap = try allocator.alloc(Cell, rows * columns);
         return Playground{ .rows = rows, .columns = columns, .grid = grid, .swap = swap };
     }
 
-    pub fn fromBuffer(allocator: std.mem.Allocator, rows: u32, columns: u32, buff: []u1) !Playground {
+    pub fn fromBuffer(allocator: std.mem.Allocator, rows: u32, columns: u32, buff: []u8) !Playground {
         assert(buff.len == rows * columns);
         const playground = try Playground.new(allocator, rows, columns);
         for (0..rows) |row_index| {
             for (0..columns) |col_index| {
-                playground.grid[row_index][col_index].value = buff[row_index * rows + col_index];
-                playground.swap[row_index][col_index].value = 0;
+                playground.grid[playground.cellIndex(row_index, col_index)].value = buff[row_index * rows + col_index];
+                playground.swap[playground.cellIndex(row_index, col_index)].value = 0;
             }
         }
         return playground;
@@ -186,8 +183,8 @@ pub const Playground = struct {
         for (0..rows) |row_index| {
             for (0..columns) |col_index| {
                 const mycellval = r.random().uintAtMost(u1, 1);
-                playground.grid[row_index][col_index] = Cell{ .value = mycellval };
-                playground.swap[row_index][col_index] = Cell{ .value = 0 };
+                playground.grid[playground.cellIndex(row_index, col_index)] = Cell{ .value = mycellval };
+                playground.swap[playground.cellIndex(row_index, col_index)] = Cell{ .value = 0 };
             }
         }
         return playground;
@@ -195,12 +192,12 @@ pub const Playground = struct {
 };
 
 test "playground next generation works" {
-    var stable = [_]u1{
+    var stable = [_]u8{
         0, 1, 0, // 0x0
         0, 1, 0, // 0x0
         0, 1, 0, // 0x0
     };
-    const stableSlice: []u1 = stable[0..];
+    const stableSlice: []u8 = stable[0..];
     // next generation should basically be the same
     var playgound = try Playground.fromBuffer(std.testing.allocator, 3, 3, stableSlice);
     defer playgound.deinit(std.testing.allocator);
@@ -208,58 +205,56 @@ test "playground next generation works" {
     playgound.setNeigborsCorners();
     try std.testing.expectEqual(
         0,
-        playgound.swap[0][0].value,
+        playgound.swap[playgound.cellIndex(0, 0)].value,
     );
     try std.testing.expectEqual(
         0,
-        playgound.swap[0][2].value,
+        playgound.swap[playgound.cellIndex(0, 2)].value,
     );
     try std.testing.expectEqual(
         0,
-        playgound.swap[2][2].value,
+        playgound.swap[playgound.cellIndex(2, 2)].value,
     );
     try std.testing.expectEqual(
         0,
-        playgound.swap[2][0].value,
+        playgound.swap[playgound.cellIndex(2, 0)].value,
     );
 
     playgound.setNeighborsFirstRowInner();
     try std.testing.expectEqual(
         0,
-        playgound.swap[0][1].value,
+        playgound.swap[playgound.cellIndex(0, 1)].value,
     );
 
     playgound.setNeighborsLastRowInner();
     try std.testing.expectEqual(
         0,
-        playgound.swap[2][1].value,
+        playgound.swap[playgound.cellIndex(2, 1)].value,
     );
 
     playgound.setNeigborsFirstColInner();
     try std.testing.expectEqual(
         1,
-        playgound.swap[1][0].value,
+        playgound.swap[playgound.cellIndex(1, 0)].value,
     );
 
     playgound.setNeigborsLastColInner();
     try std.testing.expectEqual(
         1,
-        playgound.swap[1][2].value,
+        playgound.swap[playgound.cellIndex(1, 2)].value,
     );
 
     playgound.setIslandCells();
     try std.testing.expectEqual(
         1,
-        playgound.swap[1][1].value,
+        playgound.swap[playgound.cellIndex(1, 1)].value,
     );
-    var expected = [_]u1{
+    var expected = [_]u8{
         0, 0, 0, // 000
         1, 1, 1, // 111
         0, 0, 0, // 000
     };
     var expectedP = try Playground.fromBuffer(std.testing.allocator, 3, 3, expected[0..]);
     defer expectedP.deinit(std.testing.allocator);
-    try std.testing.expectEqualSlices(Cell, expectedP.grid[0], playgound.swap[0]);
-    try std.testing.expectEqualSlices(Cell, expectedP.grid[1], playgound.swap[1]);
-    try std.testing.expectEqualSlices(Cell, expectedP.grid[2], playgound.swap[2]);
+    try std.testing.expectEqualSlices(Cell, expectedP.grid, playgound.swap);
 }

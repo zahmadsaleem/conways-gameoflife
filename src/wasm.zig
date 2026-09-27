@@ -83,7 +83,7 @@ var global_playground: lib.Playground = undefined;
 
 /// playground_init creates a playground from existing buffer
 export fn playground_init(rows: u32, cols: u32, buffptr: usize) usize {
-    const buff: [*]u1 = @ptrFromInt(buffptr);
+    const buff: [*]u8 = @ptrFromInt(buffptr);
     const ptr = lib.Playground.fromBuffer(allocator, rows, cols, buff[0..(rows * cols)]) catch {
         return fail(WasmError.OutOfMemory);
     };
